@@ -1,14 +1,5 @@
 (ns adl-support.tags
-    (:require selmer.node
-            [selmer.filter-parser :refer [split-filter-val
-                                          safe-filter
-                                          compile-filter-body
-                                          fix-accessor
-                                          get-accessor]]
-            [selmer.filters :refer [filters]]
-            [selmer.util :refer :all]
-            [json-html.core :refer [edn->html]])
-  (:import [selmer.node INode TextNode FunctionNode]))
+    (:require [selmer.parser :as p]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;
@@ -26,9 +17,31 @@
 ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn if-member-of-permitted
+  "If at least one of these `args` matches some group name in the `:user-roles`
+  of this `context`, return this `success`, else this `failure`."
+  [args context success failure]
+  (if
+    (and
+      (seq? args)
+      (set? (:user-roles context))
+      (some (:user-roles context) args))
+    success
+    failure))
 
-(defn if-writable-handler [params tag-content render rdr]
-  "If the current element is writable by the current user, emit the content of
-  the if clause; else emit the content of the else clause."
-  (let [{if-tags :ifwritable else-tags :else} (tag-content rdr :ifwritable :else :endifwritable)]
-    params))
+(defn add-tags []
+  "Add custom tags required by ADL-generated code to the parser's tags."
+  (p/add-tag! :ifmemberof
+              (fn [args context content]
+                (if-member-of-permitted args context
+                                        (get-in content [:ifmemberof :content]) (get-in content [:else :content])))
+              :else
+              (fn [args context content]
+                "")
+            :endifmemberof))
+
+(add-tags)
+
+(if-member-of-permitted '("public" "canvassers") {:user-roles #{"canvassers"}} "caramba" false)
+
+
