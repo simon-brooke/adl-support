@@ -29,14 +29,43 @@
     (reduce
       merge
       (map
-        #(let [pair (split % #"=")
-               v (try
-                   (read-string (nth pair 1))
-                   (catch Exception _
-                     (nth pair 1)))
-               value (if (number? v) v (str v))]
-           (hash-map (keyword (first pair)) value))
+        #(let [pair (split % #"=")]
+           (if (= (count pair) 2)
+             (let
+               [v (try
+                    (read-string (nth pair 1))
+                    (catch Exception _
+                      (nth pair 1)))
+                value (if (number? v) v (str v))]
+               (hash-map (keyword (first pair)) value))
+             {}))
         (split query-string #"\&")))))
+
+
+(defn massage-params
+  "Sending empty strings, or numbers as strings, to the database often isn't
+  helpful. Massage these `params` to eliminate these problems."
+  [params]
+  (reduce
+    merge
+    {}
+    (map
+      (fn [k]
+        (let [v (params k)
+              vr (if
+                   (string? v)
+                   (try
+                     (read-string v)
+                     (catch Exception _ nil)))]
+          (cond
+            (nil? v) {}
+            (= v "") {}
+            (number? vr) {k vr}
+            true
+            {k v})))
+      (keys params))))
+
+(massage-params {:a "a" :b "1" :c nil})
 
 (defn
   raw-resolve-template

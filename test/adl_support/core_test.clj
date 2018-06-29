@@ -19,4 +19,8 @@
     (let [expected {:name "simon" :id 1}
           actual (query-string-to-map "id=1&name=simon")]
       (is (= expected actual) "One string value, one integer. Order of pairs might be reversed, and that's OK"))
+    (let [expected {:address_id_expanded "AIRDS"}
+          actual (query-string-to-map "id=&address_id_expanded=AIRDS&sub-address=")]
+      (is (= expected actual) "Yeys with no values should not be included in the map"))
     ))
+
