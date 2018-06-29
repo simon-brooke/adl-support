@@ -33,15 +33,13 @@
   "Add custom tags required by ADL-generated code to the parser's tags."
   (p/add-tag! :ifmemberof
               (fn [args context content]
-                (if-member-of-permitted args context
-                                        (get-in content [:ifmemberof :content]) (get-in content [:else :content])))
+                (if-member-of-permitted
+                  args context
+                  (get-in content [:ifmemberof :content])
+                  (get-in content [:else :content])))
               :else
               (fn [args context content]
                 "")
-            :endifmemberof))
+              :endifmemberof))
 
 (add-tags)
-
-(if-member-of-permitted '("public" "canvassers") {:user-roles #{"canvassers"}} "caramba" false)
-
-
