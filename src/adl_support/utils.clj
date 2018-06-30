@@ -1,8 +1,9 @@
 (ns ^{:doc "Application Description Language support library - utility functions."
       :author "Simon Brooke"}
   adl-support.utils
-  (:require [clojure.string :as s]
+  (:require [clojure.math.numeric-tower :refer [expt]]
             [clojure.pprint :as p]
+            [clojure.string :as s]
             [clojure.xml :as x]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44,12 +45,14 @@
 (defn wrap-lines
   "Wrap lines in this `text` to this `width`; return a list of lines."
   ;; Shamelessly adapted from https://www.rosettacode.org/wiki/Word_wrap#Clojure
-  [width text]
-  (s/split-lines
-   (p/cl-format
-    nil
-    (str "~{~<~%~1," width ":;~A~> ~}")
-    (clojure.string/split text #" "))))
+  ([width text]
+   (s/split-lines
+     (p/cl-format
+       nil
+       (str "~{~<~%~1," width ":;~A~> ~}")
+       (clojure.string/split text #" "))))
+  ([text]
+   (wrap-lines 76 text)))
 
 
 (defn emit-header
@@ -450,3 +453,16 @@
 (defn type-for-defined
   [property application]
   (:type (:attrs (typedef property application))))
+
+
+(defn volatility
+  "Return the cache ttl in seconds for records of this `entity`."
+  [entity]
+  (try
+    (let
+      [v (read-string (:volatility (:attrs entity)))]
+      (if
+        (zero? v)
+        0
+        (expt 10 v)))
+    (catch Exception _ 0)))
