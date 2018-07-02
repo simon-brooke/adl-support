@@ -42,30 +42,46 @@
         (split query-string #"\&")))))
 
 
+(defn massage-value
+  [k m]
+  (let [v (m k)
+        vr (if
+             (string? v)
+             (try
+               (read-string v)
+               (catch Exception _ nil)))]
+    (cond
+     (nil? v) {}
+     (= v "") {}
+     (number? vr) {k vr}
+     true
+     {k v})))
+
+
 (defn massage-params
   "Sending empty strings, or numbers as strings, to the database often isn't
-  helpful. Massage these `params` to eliminate these problems."
-  [params]
+  helpful. Massage these `params` and `form-params` to eliminate these problems.
+  We must take key field values out of just params, but we should take all other
+  values out of form-params - because we need the key to load the form in
+  the first place, but just accepting values of other params would allow spoofing."
+  [params form-params key-fields]
   (reduce
+   merge
+   ;; do the keyfields first, from params
+   (reduce
     merge
     {}
     (map
-      (fn [k]
-        (let [v (params k)
-              vr (if
-                   (string? v)
-                   (try
-                     (read-string v)
-                     (catch Exception _ nil)))]
-          (cond
-            (nil? v) {}
-            (= v "") {}
-            (number? vr) {k vr}
-            true
-            {k v})))
+     #(massage-value % params)
+     (filter
+      #(key-fields (str (name %)))
       (keys params))))
+   ;; then merge in everything from form-params, potentially overriding what
+   ;; we got from params.
+   (map
+    #(massage-value % form-params)
+    (keys form-params))))
 
-(massage-params {:a "a" :b "1" :c nil})
 
 (defn
   raw-resolve-template
@@ -75,5 +91,25 @@
     n
     (str "auto/" n)))
 
+
 (def resolve-template (memoize raw-resolve-template))
+
+
+(defmacro do-or-log-error
+  "Evaluate the supplied `form` in a try/catch block. If the
+  keyword param `:message` is supplied, the value will be used
+  as the log message; if the keyword param `:error-return` is
+  supplied, the value will be returned if an exception is caught."
+  [form & {:keys [message error-return]
+           :or {message `(str "A failure occurred in "
+                              ~(list 'quote form))}}]
+  `(try
+     ~form
+     (catch Exception any#
+       (clojure.tools.logging/error
+        (str ~message
+             (with-out-str
+               (-> any# .printStackTrace))))
+       ~error-return)))
+
 

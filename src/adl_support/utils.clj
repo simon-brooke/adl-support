@@ -4,6 +4,7 @@
   (:require [clojure.math.numeric-tower :refer [expt]]
             [clojure.pprint :as p]
             [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [clojure.xml :as x]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -22,6 +23,7 @@
 ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; TODO: this really ought to be split into several namespaces
 
 (def ^:dynamic  *locale*
   "The locale for which files will be generated."
@@ -341,6 +343,15 @@
   "Return the properties of this `entity` which are user distinct"
   [entity]
   (filter #(#{"user" "all"} (:distinct (:attrs %))) (all-properties entity)))
+
+
+(defn user-distinct-property-names
+  "Return, as a set, the names of properties which are user distinct"
+  [entity]
+  (set
+   (map
+    (fn [x] (-> x :attrs :name))
+    (user-distinct-properties entity))))
 
 
 (defmacro insertable-properties
