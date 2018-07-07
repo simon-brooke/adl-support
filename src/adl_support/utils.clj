@@ -86,15 +86,30 @@
 
 
 (defn link-table-name
-  "Canonical name of a link table between entity `e1` and entity `e2`."
-  [e1 e2]
-  (s/join
-    "_"
-    (cons
-      "ln"
-      (sort
-        (list
-          (:name (:attrs e1)) (:name (:attrs e2)))))))
+  "Canonical name of a link table between entity `e1` and entity `e2`. However, there
+  may be different links between the same two tables with different semantics; if
+  `property` is specified, and if more than one property in `e1` links to `e2`, generate
+  a more specific link name."
+  ([e1 e2]
+   (s/join
+     "_"
+     (cons
+       "ln"
+       (sort
+         (list
+           (:name (:attrs e1)) (:name (:attrs e2)))))))
+  ([property e1 e2]
+   (if (count
+         (descendants
+           e1
+           #(and
+              (= (-> % :attrs :type) "link")
+              (=
+                (-> % :attrs :entity)
+                (-> property :attrs :entity)))))
+     (s/join
+       "_" (map #(:name (:attrs %)) (list property e1 e2)))
+     (link-table-name e1 e2))))
 
 
 (defn children
