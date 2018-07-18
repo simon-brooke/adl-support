@@ -1,4 +1,4 @@
-(defproject adl-support "0.1.0-SNAPSHOT"
+(defproject adl-support "0.1.1-SNAPSHOT"
   :description "A small library of functions called by generated ADL code."
   :url "http://example.com/FIXME"
   :license {:name "MIT License"
