@@ -27,7 +27,7 @@
 
 (def ^:dynamic  *locale*
   "The locale for which files will be generated."
-  "en-GB")
+  "en_GB.UTF-8")
 
 (def ^:dynamic *output-path*
   "The path to which generated files will be written."
@@ -108,7 +108,7 @@
                 (-> % :attrs :entity)
                 (-> property :attrs :entity)))))
      (s/join
-       "_" (map #(:name (:attrs %)) (list property e1 e2)))
+       "_" (cons "ln" (map #(:name (:attrs %)) (list property e1 e2))))
      (link-table-name e1 e2))))
 
 
@@ -168,7 +168,6 @@
    (first (children-with-tag element tag)))
   ([element tag predicate]
    (first (children-with-tag element tag predicate))))
-
 
 
 (defn typedef
@@ -246,13 +245,17 @@
   (permission-groups permissions #(#{"read" "insert" "noedit" "edit" "all"} (:permission (:attrs %)))))
 
 
-(defn writable-by
+(defn writeable-by
   "Return a list of names of groups to which are granted write access,
   given these `permissions`, else nil.
-  TODO: TOTHINKABOUT: properties are also writable by `insert` and `noedit`, but only if the
+  TODO: TOTHINKABOUT: properties are also writeable by `insert` and `noedit`, but only if the
   current value is nil."
-  [permissions]
-  (permission-groups permissions #(#{"edit" "all"} (:permission (:attrs %)))))
+  ([permissions]
+   (writeable-by permissions true))
+  ([permissions has-value?]
+  (let
+    [privileges (if has-value? #{"edit" "all"} #{"edit" "all" "insert" "noedit"})]
+  (permission-groups permissions #(privileges (:permission (:attrs %)))))))
 
 
 (defn singularise
@@ -274,11 +277,14 @@
 (defn capitalise
   "Return a string like `s` but with each token capitalised."
   [s]
-  (s/join
-    " "
-    (map
-      #(apply str (cons (Character/toUpperCase (first %)) (rest %)))
-      (s/split s #"[ \t\r\n]+"))))
+  (if
+    (string? s)
+    (s/join
+      " "
+      (map
+        #(apply str (cons (Character/toUpperCase (first %)) (rest %)))
+        (s/split s #"[ \t\r\n]+")))
+    s))
 
 
 (defn pretty-name
@@ -288,7 +294,7 @@
 
 (defn safe-name
   "Return a safe name for the object `o`, given the specified `convention`.
-  `o` is expected to be either a string or an entity."
+  `o` is expected to be either a string or an element."
   ([o]
    (if
      (element? o)
@@ -308,6 +314,45 @@
          (safe-name string))))))
 
 
+(defn property-for-field
+  "Return the property within this `entity` which matches this `field`."
+  [field entity]
+  (child-with-tag
+    entity
+    :property
+    #(=
+       (-> field :attrs :property)
+       (-> % :attrs :name))))
+
+
+(defn prompt
+  "Return an appropriate prompt for the given `field-or-property` taken from this
+  `form` of this `entity` of this `application`, in the context of the current
+  binding of `*locale*`. TODO: something more sophisticated about i18n"
+  [field-or-property form entity application]
+  (let [property (case (:tag field-or-property)
+                   :property field-or-property
+                   :field (property-for-field field-or-property entity)
+                   nil)]
+    (capitalise
+      (or
+        (:prompt
+          (:attrs
+            (child-with-tag
+              field-or-property
+              :prompt
+              #(= (:locale (:attrs %)) *locale*))))
+        (:prompt
+          (:attrs
+            (child-with-tag
+              property
+              :prompt
+              #(= (:locale (:attrs %)) *locale*))))
+        (:name (:attrs property))
+        (:property (:attrs field-or-property))
+        "Missing prompt"))))
+
+
 (defmacro properties
   "Return all the properties of this `entity`."
   [entity]
@@ -315,16 +360,30 @@
 
 
 (defn descendants-with-tag
-  "Return all descendants of this `element`, recursively, which have this `tag`."
-  [element tag]
-  (flatten
-    (remove
-      empty?
-      (cons
-        (children element #(= (:tag %) tag))
-        (map
-          #(descendants-with-tag % tag)
-          (children element))))))
+  "Return all descendants of this `element`, recursively, which have this `tag`.
+  If `predicate` is specified, return only those also satisfying this `predicate`."
+  ([element tag]
+   (flatten
+     (remove
+       empty?
+       (cons
+         (children element #(= (:tag %) tag))
+         (map
+           #(descendants-with-tag % tag)
+           (children element))))))
+  ([element tag predicate]
+   (filter
+     predicate
+     (descendants-with-tag element tag))))
+
+
+(defn descendant-with-tag
+  "Return the first descendant of this `element`, recursively, which has this `tag`.
+  If `predicate` is specified, return the first also satisfying this `predicate`."
+  ([element tag]
+   (first (descendants-with-tag element tag)))
+  ([element tag predicate]
+   (first (descendants-with-tag element tag predicate))))
 
 
 (defn find-permissions
@@ -396,13 +455,20 @@
     (= (count properties) (count links))))
 
 
-(defn key-names [entity]
+(defn key-names
+  ([entity]
   (set
     (remove
       nil?
       (map
         #(:name (:attrs %))
         (key-properties entity)))))
+  ([entity as-keywords?]
+   (let [names (key-names entity)]
+     (if
+       as-keywords?
+       (set (map keyword names))
+       names))))
 
 
 (defn base-type

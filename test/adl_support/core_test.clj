@@ -24,3 +24,21 @@
       (is (= expected actual) "Yeys with no values should not be included in the map"))
     ))
 
+(deftest massage-params-tests
+  (testing "Massaging of params"
+    (let [expected {:id 67}
+          actual (massage-params {:id 67} {} #{:id})]
+      (is (= expected actual) "numeric param"))
+    (let [expected {:id 67}
+          actual (massage-params {:id "67"} {} #{:id})]
+      (is (= expected actual) "string param"))
+    (let [expected {:id 67}
+          actual (massage-params {"id" "67"} {} #{:id})]
+      (is (= expected actual) "string keyword"))
+    (let [expected {:id 67}
+          actual (massage-params {:id 60} {:id 67} #{:id})]
+      (is (= expected actual) "params and form-params differ"))
+    (let [expected {:id 67 :offset 0 :limit 50}
+          actual (massage-params {:id 60} {:id "67" :offset "0" :limit "50"} #{:id})]
+      (is (= expected actual) "Limit and offset in form-params"))
+      ))

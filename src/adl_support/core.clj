@@ -53,9 +53,9 @@
     (cond
      (nil? v) {}
      (= v "") {}
-     (number? vr) {k vr}
+     (number? vr) {(keyword k) vr}
      true
-     {k v})))
+     {(keyword k) v})))
 
 
 (defn massage-params
@@ -65,22 +65,24 @@
   values out of form-params - because we need the key to load the form in
   the first place, but just accepting values of other params would allow spoofing."
   [params form-params key-fields]
-  (reduce
-   merge
-   ;; do the keyfields first, from params
-   (reduce
-    merge
-    {}
-    (map
-     #(massage-value % params)
-     (filter
-      #(key-fields (str (name %)))
-      (keys params))))
-   ;; then merge in everything from form-params, potentially overriding what
-   ;; we got from params.
-   (map
-    #(massage-value % form-params)
-    (keys form-params))))
+  (let
+    [ks (set (map keyword key-fields))]
+    (reduce
+      merge
+      ;; do the keyfields first, from params
+      (reduce
+        merge
+        {}
+        (map
+          #(massage-value % params)
+          (filter
+            #(ks (keyword %))
+            (keys params))))
+      ;; then merge in everything from form-params, potentially overriding what
+      ;; we got from params.
+      (map
+        #(massage-value % form-params)
+        (keys form-params)))))
 
 
 (defn
