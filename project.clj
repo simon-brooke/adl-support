@@ -12,6 +12,10 @@
   :plugins [[lein-codox "0.10.3"]
             [lein-release "1.0.5"]]
 
+  ;; `lein release` doesn't work with `git flow release`. To use
+  ;; `lein release`, first merge `develop` into `master`, and then, in branch
+  ;; `master`, run `lein release`
+
   :release-tasks [["vcs" "assert-committed"]
                   ["clean"]
                   ["test"]
