@@ -1,4 +1,4 @@
-(defproject adl-support "0.1.2-SNAPSHOT"
+(defproject adl-support "0.1.3-SNAPSHOT"
   :description "A small library of functions called by generated ADL code."
   :url "https://github.com/simon-brooke/adl-support"
   :license {:name "MIT License"
@@ -11,6 +11,10 @@
 
   :plugins [[lein-codox "0.10.3"]
             [lein-release "1.0.5"]]
+
+  ;; `lein release` doesn't work with `git flow release`. To use
+  ;; `lein release`, first merge `develop` into `master`, and then, in branch
+  ;; `master`, run `lein release`
 
   :release-tasks [["vcs" "assert-committed"]
                   ["clean"]
