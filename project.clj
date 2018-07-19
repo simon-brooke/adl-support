@@ -1,6 +1,6 @@
 (defproject adl-support "0.1.1"
   :description "A small library of functions called by generated ADL code."
-  :url "http://example.com/FIXME"
+  :url "https://github.com/simon-brooke/adl-support"
   :license {:name "MIT License"
             :url "https://opensource.org/licenses/MIT"}
 
@@ -13,13 +13,13 @@
             [lein-release "1.0.5"]]
 
   :release-tasks [["vcs" "assert-committed"]
+                  ["clean"]
+                  ["test"]
+                  ["codox"]
                   ["change" "version" "leiningen.release/bump-version" "release"]
                   ["vcs" "commit"]
                   ;; ["vcs" "tag"] -- not working, problems with secret key
-                  ["clean"]
-                  ["test"]
                   ["uberjar"]
-                  ["codox"]
                   ["install"]
                   ["change" "version" "leiningen.release/bump-version"]
                   ["vcs" "commit"]])
