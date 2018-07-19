@@ -1,4 +1,4 @@
-(defproject adl-support "0.1.1"
+(defproject adl-support "0.1.2-SNAPSHOT"
   :description "A small library of functions called by generated ADL code."
   :url "https://github.com/simon-brooke/adl-support"
   :license {:name "MIT License"
@@ -21,5 +21,6 @@
                   ;; ["vcs" "tag"] -- not working, problems with secret key
                   ["uberjar"]
                   ["install"]
+                  ["deploy" "clojars"]
                   ["change" "version" "leiningen.release/bump-version"]
                   ["vcs" "commit"]])
