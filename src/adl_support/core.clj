@@ -18,6 +18,14 @@
 ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(def ^:dynamic *warn*
+  "The idea here is to have a function with which to show warnings to the user,
+  which can be dynamically bound. Any binding should be a function of one
+  argument, which it should print, log, or otherwise display."
+  (fn [s] (println s)))
+
+
 (defn query-string-to-map
   "A `query-string` - the query-part of a URL - comprises generally
   `<name>=<value>&<name>=<value>...`; reduce such a string to a map.
