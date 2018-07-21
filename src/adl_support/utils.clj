@@ -3,9 +3,7 @@
   adl-support.utils
   (:require [clojure.math.numeric-tower :refer [expt]]
             [clojure.pprint :as p]
-            [clojure.string :as s]
-            [clojure.tools.logging :as log]
-            [clojure.xml :as x]))
+            [clojure.string :as s]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;

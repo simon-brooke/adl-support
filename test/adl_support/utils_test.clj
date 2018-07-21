@@ -4,6 +4,13 @@
 
 ;; Yes, there's MASSES in utils which ought to be tested. I'll add more tests over time.
 
+(deftest singularise-tests
+  (testing "Singularise"
+    (is (= "address" (singularise "addresses")))
+    (is (= "address" (singularise "address")))
+    (is (= "expertise" (singularise "expertise")))))
+
+
 (deftest child-with-tag-tests
   (testing "child-with-tag"
     (let [expected {:tag :prompt
