@@ -5,6 +5,7 @@
             :url "https://opensource.org/licenses/MIT"}
 
   :dependencies [[org.clojure/clojure "1.8.0"]
+                 [org.clojure/core.memoize "0.7.1"]
                  [org.clojure/math.numeric-tower "0.0.4"]
                  [org.clojure/tools.logging "0.3.1"]
                  [selmer "1.10.6"]]
