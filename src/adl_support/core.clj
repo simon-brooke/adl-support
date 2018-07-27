@@ -52,6 +52,8 @@
 
 
 (defn massage-value
+  "Return a map with one key, this `k` as a keyword, whose value is the binding of
+  `k` in map `m`, as read by read."
   [k m]
   (let [v (m k)
         vr (if
@@ -72,30 +74,29 @@
   helpful. Massage these `params` and `form-params` to eliminate these problems.
   We must take key field values out of just params, but if form-params are present
   we should take all other values out of form-params - because we need the key to
-  load the form in the first place. `form-params` always override `params`"
+  load the form in the first place. `form-params` always override `params`.
+
+  **NOTE THAT** the parameter `key-fields` is deprecated and ignored."
   ([params form-params key-fields]
    (let
-     [ks (set (map keyword key-fields))
-      p (reduce
-         merge
-         {}
-         (map
-          #(massage-value % params)
-          (filter
-           #(ks (keyword %))
-           (keys params))))]
+     [p (reduce
+          merge
+          {}
+          (map
+            #(massage-value % params)
+            (keys params)))]
      (if
-       (empty? form-params)
+       (empty? (keys form-params))
        p
        (reduce
-        merge
-        ;; do the keyfields first, from params
-        p
-        ;; then merge in everything from form-params, potentially overriding what
-        ;; we got from params.
-        (map
-         #(massage-value % form-params)
-         (keys form-params))))))
+         merge
+         ;; do the keyfields first, from params
+         p
+         ;; then merge in everything from form-params, potentially overriding what
+         ;; we got from params.
+         (map
+           #(massage-value % form-params)
+           (keys form-params))))))
   ([request key-fields]
    (raw-massage-params (:params request) (:form-params request) key-fields))
   ([request]
@@ -140,4 +141,35 @@
                (-> any# .printStackTrace))))
        ~error-return)))
 
+
+(defmacro do-or-return-reason
+  "Clojure stacktraces are unreadable. We have to do better; evaluate
+  this `form` in a try-catch block; return a map. If the evaluation
+  succeeds, the map will have a key `:result` whose value is the result;
+  otherwise it will have a key `:error` which will be bound to the most
+  sensible error message we can construct."
+  ;; TODO: candidate for moving to adl-support.core
+  [form]
+  `(try
+     {:result ~form}
+     (catch Exception any#
+       (clojure.tools.logging/error
+         (str (.getName (.getClass any#))
+              ": "
+              (.getMessage any#)
+              (with-out-str
+                (-> any# .printStackTrace))))
+       {:error
+        (s/join
+          "\n\tcaused by: "
+          (reverse
+            (loop [ex# any# result# ()]
+              (if-not (nil? ex#)
+                (recur
+                  (.getCause ex#)
+                  (cons (str
+                          (.getName (.getClass ex#))
+                          ": "
+                          (.getMessage ex#)) result#))
+                result#))))})))
 
