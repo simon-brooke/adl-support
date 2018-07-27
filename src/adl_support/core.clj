@@ -70,32 +70,36 @@
 (defn raw-massage-params
   "Sending empty strings, or numbers as strings, to the database often isn't
   helpful. Massage these `params` and `form-params` to eliminate these problems.
-  We must take key field values out of just params, but we should take all other
-  values out of form-params - because we need the key to load the form in
-  the first place, but just accepting values of other params would allow spoofing."
-      ([params form-params key-fields]
-       (let
-         [ks (set (map keyword key-fields))]
-         (reduce
-           merge
-           ;; do the keyfields first, from params
-           (reduce
-             merge
-             {}
-             (map
-               #(massage-value % params)
-               (filter
-                 #(ks (keyword %))
-                 (keys params))))
-           ;; then merge in everything from form-params, potentially overriding what
-           ;; we got from params.
-           (map
-             #(massage-value % form-params)
-             (keys form-params)))))
-      ([request key-fields]
-       (raw-massage-params (:params request) (:form-params request) key-fields))
-      ([request]
-       (raw-massage-params (:params request) (:form-params request) #{})))
+  We must take key field values out of just params, but if form-params are present
+  we should take all other values out of form-params - because we need the key to
+  load the form in the first place. `form-params` always override `params`"
+  ([params form-params key-fields]
+   (let
+     [ks (set (map keyword key-fields))
+      p (reduce
+         merge
+         {}
+         (map
+          #(massage-value % params)
+          (filter
+           #(ks (keyword %))
+           (keys params))))]
+     (if
+       (empty? form-params)
+       p
+       (reduce
+        merge
+        ;; do the keyfields first, from params
+        p
+        ;; then merge in everything from form-params, potentially overriding what
+        ;; we got from params.
+        (map
+         #(massage-value % form-params)
+         (keys form-params))))))
+  ([request key-fields]
+   (raw-massage-params (:params request) (:form-params request) key-fields))
+  ([request]
+   (raw-massage-params (:params request) (:form-params request) #{})))
 
 
 (def massage-params
