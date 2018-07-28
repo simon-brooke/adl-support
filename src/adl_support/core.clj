@@ -1,7 +1,8 @@
 (ns adl-support.core
   (:require [clojure.core.memoize :as memo]
             [clojure.java.io :as io]
-            [clojure.string :refer [split]]))
+            [clojure.string :refer [split join]]
+            [clojure.tools.logging]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;
@@ -25,30 +26,6 @@
   which can be dynamically bound. Any binding should be a function of one
   argument, which it should print, log, or otherwise display."
   (fn [s] (println s)))
-
-
-(defn query-string-to-map
-  "A `query-string` - the query-part of a URL - comprises generally
-  `<name>=<value>&<name>=<value>...`; reduce such a string to a map.
-  If `query-string` is nil or empty return an empty map."
-  [query-string]
-  (if
-    (empty? query-string)
-    {}
-    (reduce
-      merge
-      (map
-        #(let [pair (split % #"=")]
-           (if (= (count pair) 2)
-             (let
-               [v (try
-                    (read-string (nth pair 1))
-                    (catch Exception _
-                      (nth pair 1)))
-                value (if (number? v) v (str v))]
-               (hash-map (keyword (first pair)) value))
-             {}))
-        (split query-string #"\&")))))
 
 
 (defn massage-value
@@ -80,23 +57,23 @@
   ([params form-params key-fields]
    (let
      [p (reduce
-          merge
-          {}
-          (map
-            #(massage-value % params)
-            (keys params)))]
+         merge
+         {}
+         (map
+          #(massage-value % params)
+          (keys params)))]
      (if
        (empty? (keys form-params))
        p
        (reduce
-         merge
-         ;; do the keyfields first, from params
-         p
-         ;; then merge in everything from form-params, potentially overriding what
-         ;; we got from params.
-         (map
-           #(massage-value % form-params)
-           (keys form-params))))))
+        merge
+        ;; do the keyfields first, from params
+        p
+        ;; then merge in everything from form-params, potentially overriding what
+        ;; we got from params.
+        (map
+         #(massage-value % form-params)
+         (keys form-params))))))
   ([request key-fields]
    (raw-massage-params (:params request) (:form-params request) key-fields))
   ([request]
@@ -142,34 +119,92 @@
        ~error-return)))
 
 
+(defmacro compose-exception-reason
+  "Compose and return a sensible reason message for this `exception`."
+  [exception]
+  `(join
+    "\n\tcaused by: "
+    (reverse
+     (loop [ex# ~exception result# ()]
+       (if-not (nil? ex#)
+         (recur
+          (.getCause ex#)
+          (cons (str
+                 (.getName (.getClass ex#))
+                 ": "
+                 (.getMessage ex#)) result#))
+         result#)))))
+
+
+(defmacro compose-reason-and-log
+  "Compose a reason message for this `exception`, log it (with its
+  stacktrace), and return the reason message."
+  [exception]
+  `(let [reason# (compose-exception-reason ~exception)]
+     (clojure.tools.logging/error
+      (str reason#
+           "\n"
+           (with-out-str
+             (-> ~exception .printStackTrace))))
+     reason#))
+
+
 (defmacro do-or-return-reason
   "Clojure stacktraces are unreadable. We have to do better; evaluate
   this `form` in a try-catch block; return a map. If the evaluation
   succeeds, the map will have a key `:result` whose value is the result;
   otherwise it will have a key `:error` which will be bound to the most
   sensible error message we can construct."
-  ;; TODO: candidate for moving to adl-support.core
   [form]
   `(try
      {:result ~form}
      (catch Exception any#
-       (clojure.tools.logging/error
-         (str (.getName (.getClass any#))
-              ": "
-              (.getMessage any#)
-              (with-out-str
-                (-> any# .printStackTrace))))
-       {:error
-        (s/join
-          "\n\tcaused by: "
-          (reverse
-            (loop [ex# any# result# ()]
-              (if-not (nil? ex#)
-                (recur
-                  (.getCause ex#)
-                  (cons (str
-                          (.getName (.getClass ex#))
-                          ": "
-                          (.getMessage ex#)) result#))
-                result#))))})))
+       {:error (compose-exception-reason any#)})))
+
+
+(defmacro do-or-log-and-return-reason
+  "Clojure stacktraces are unreadable. We have to do better; evaluate
+  this `form` in a try-catch block; return a map. If the evaluation
+  succeeds, the map will have a key `:result` whose value is the result;
+  otherwise it will have a key `:error` which will be bound to the most
+  sensible error message we can construct. Additionally, log the exception"
+  [form]
+  `(try
+     {:result ~form}
+     (catch Exception any#
+       {:error (compose-reason-and-log any#)})))
+
+
+(defmacro do-or-warn
+  "Evaluate this `form`; if any exception is thrown, show it to the user
+  via the `*warn*` mechanism."
+  ([form]
+   `(try
+      ~form
+      (catch Exception any#
+        (*warn* (compose-exception-reason any#))
+        nil)))
+  ([form intro]
+   `(try
+      ~form
+      (catch Exception any#
+        (*warn* (str ~intro ":\n\t" (compose-exception-reason any#)))
+        nil))))
+
+
+(defmacro do-or-warn-and-log
+  "Evaluate this `form`; if any exception is thrown, log the reason and
+  show it to the user via the `*warn*` mechanism."
+  ([form]
+   `(try
+      ~form
+      (catch Exception any#
+        (*warn* (compose-reason-and-log any#))
+        nil)))
+  ([form intro]
+   `(try
+      ~form
+      (catch Exception any#
+        (*warn* (str ~intro ":\n\t" (compose-reason-and-log any#)))
+        nil))))
 

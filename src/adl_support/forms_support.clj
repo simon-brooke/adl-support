@@ -1,0 +1,118 @@
+(ns adl-support.forms-support
+  (:require [adl-support.core :refer [do-or-log-error do-or-return-reason]]
+            [adl-support.utils :refer [safe-name singularise]]
+            [clojure.core.memoize :as memo]
+            [clojure.data.json :as json]
+            [clojure.java.io :as io]
+            [clojure.string :refer [lower-case]]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;
+;;;; adl-support.forms-support: functions used by ADL-generated code:
+;;;; support functions for HTML forms.
+;;;;
+;;;; This program is free software; you can redistribute it and/or
+;;;; modify it under the terms of the MIT-style licence provided; see LICENSE.
+;;;;
+;;;; This program is distributed in the hope that it will be useful,
+;;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;;; License for more details.
+;;;;
+;;;; Copyright (C) 2018 Simon Brooke
+;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defn query-name
+  "Generate a query name for the query of type `q-type` (expected to be one
+  of `:create`, `:delete`, `:get`, `:list`, `:search-strings`, `:update`) of
+  the entity `entity-or-name` NOTE: if `entity-or-name` is passed as a string,
+  it should be the full, unaltered name of the entity."
+  [entity-or-name q-type]
+  (symbol
+   (str
+    "db/"
+    (lower-case (name q-type))
+    "-"
+    (let [n (safe-name
+             (if
+               (string? entity-or-name)
+               entity-or-name
+               (:name (:attrs entity-or-name))) :sql)]
+      (case q-type
+        (:list :search-strings) n
+        (singularise n)))
+    (case q-type
+      (:create :delete :update) "!"
+      nil))))
+
+
+(defmacro get-current-value
+  [f params entity-name]
+  `(let
+     [message# (str "Error while fetching " ~entity-name " record " ~params)]
+     (support/do-or-log-error
+      (~f  db/*db* ~params)
+      :message message#
+      :error-return {:warnings [message#]})))
+
+;; (macroexpand '(get-current-value str {:foo "bar" :ban 2} "addresses"))
+
+
+(defmacro get-menu-options
+  ;; TODO: constructing these query-method names at runtime is madness.
+  ;; we definitely need to construct them at compile time.
+  [entity-name fk value]
+  `(remove
+    nil?
+    (flatten
+     (list
+      (if
+        ~value
+        (do-or-log-error
+         (apply
+          (symbol (str "db/" (query-name ~entity-name :get)))
+          (list db/*db* {~fk ~value}))
+         :message
+         (str "Error while fetching " ~entity-name " record '" ~value "'")))
+      (do-or-log-error
+       (apply
+        (symbol (str "db/" (query-name ~entity-name :list)))
+        (list db/*db*))
+       :message
+       (str "Error while fetching " ~entity-name " list"))))))
+
+
+;; (macroexpand '(get-menu-options "addresses" :address-id 7))
+
+;; (clojure.core/remove
+;;  clojure.core/nil?
+;;  (clojure.core/flatten
+;;   (clojure.core/list
+;;    (if
+;;      7
+;;      (adl-support.core/do-or-log-error
+;;       (clojure.core/apply
+;;        (clojure.core/symbol
+;;         (clojure.core/str
+;;          "db/"
+;;          (adl-support.forms-support/query-name "addresses" :get)))
+;;        (clojure.core/list
+;;         db/*db*
+;;         {:address-id 7}))
+;;       :message
+;;       (clojure.core/str "Error while fetching " "addresses" " record '" 7 "'")))
+;;    (adl-support.core/do-or-log-error
+;;     (clojure.core/apply
+;;      (clojure.core/symbol
+;;       (clojure.core/str "db/"
+;;                         (adl-support.forms-support/query-name "addresses" :list)))
+;;      (clojure.core/list db/*db*))
+;;     :message
+;;     (clojure.core/str "Error while fetching " "addresses" " list")))))
+
+(defmacro all-keys-present?
+  "Return true if all the keys in `keys` are present in the map `m`."
+  [m keys]
+  `(clojure.set/subset? (set ~keys) (set (keys ~m))))

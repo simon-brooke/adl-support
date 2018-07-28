@@ -396,13 +396,23 @@
         elements))))
 
 
+(defn system-generated?
+  "True if the value of the `property` is system generated, and
+  should not be set by the user."
+  [property]
+  (child-with-tag
+          property
+          :generator
+          #(#{"native" "guid"} (-> % :attrs :action))))
+
+
 (defn insertable?
   "Return `true` it the value of this `property` may be set from user-supplied data."
   [property]
   (and
-    (= (:tag property) :property)
-    (not (#{"link"} (:type (:attrs property))))
-    (not (= (:distinct (:attrs property)) "system"))))
+   (= (:tag property) :property)
+   (not (#{"link"} (:type (:attrs property))))
+   (not (system-generated? property))))
 
 
 (defmacro all-properties
@@ -523,14 +533,14 @@
   first child of the `entity` of the specified type will be used."
   [form entity application]
   (cond
-    (and (map? form) (#{:list :form :page} (:tag form)))
-  (s/join
+   (and (map? form) (#{:list :form :page} (:tag form)))
+   (s/join
     "-"
     (flatten
-      (list
-        (name (:tag form)) (:name (:attrs entity)) (s/split (:name (:attrs form)) #"[ \n\r\t]+"))))
-    (keyword? form)
-    (path-part (first (children-with-tag entity form)) entity application)))
+     (list
+      (name (:tag form)) (:name (:attrs entity)) (s/split (:name (:attrs form)) #"[ \n\r\t]+"))))
+   (keyword? form)
+   (path-part (first (children-with-tag entity form)) entity application)))
 
 
 (defn editor-name

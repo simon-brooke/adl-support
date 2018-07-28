@@ -1,12 +1,14 @@
 (ns adl-support.rest-support
-  (:require [clojure.core.memoize :as memo]
+  (:require [adl-support.core :refer [do-or-log-error do-or-return-reason]]
+            [clojure.core.memoize :as memo]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :refer [split]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;
-;;;; adl-support.core: functions used by ADL-generated code: REST support.
+;;;; adl-support.rest-support: functions used by ADL-generated code: support
+;;;; functions for REST routes.
 ;;;;
 ;;;; This program is free software; you can redistribute it and/or
 ;;;; modify it under the terms of the MIT-style licence provided; see LICENSE.
