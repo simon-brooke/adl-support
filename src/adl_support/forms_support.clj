@@ -57,13 +57,9 @@
       :message message#
       :error-return {:warnings [message#]})))
 
-;; (macroexpand '(get-current-value str {:foo "bar" :ban 2} "addresses"))
-
 
 (defmacro get-menu-options
-  ;; TODO: constructing these query-method names at runtime is madness.
-  ;; we definitely need to construct them at compile time.
-  [entity-name fk value]
+  [entity-name get-q list-q fk value]
   `(remove
     nil?
     (flatten
@@ -72,45 +68,25 @@
         ~value
         (do-or-log-error
          (apply
-          (symbol (str "db/" (query-name ~entity-name :get)))
+          ~get-q
           (list db/*db* {~fk ~value}))
          :message
          (str "Error while fetching " ~entity-name " record '" ~value "'")))
       (do-or-log-error
        (apply
-        (symbol (str "db/" (query-name ~entity-name :list)))
-        (list db/*db*))
+        ~list-q
+        (list db/*db*)
+        {})
        :message
        (str "Error while fetching " ~entity-name " list"))))))
 
 
-;; (macroexpand '(get-menu-options "addresses" :address-id 7))
+(defmacro auxlist-data-name
+  "The name to which data for this `auxlist` will be bound in the
+  Selmer params."
+ [auxlist]
+ `(safe-name (str "auxlist-" (-> ~auxlist :attrs :property)) :clojure))
 
-;; (clojure.core/remove
-;;  clojure.core/nil?
-;;  (clojure.core/flatten
-;;   (clojure.core/list
-;;    (if
-;;      7
-;;      (adl-support.core/do-or-log-error
-;;       (clojure.core/apply
-;;        (clojure.core/symbol
-;;         (clojure.core/str
-;;          "db/"
-;;          (adl-support.forms-support/query-name "addresses" :get)))
-;;        (clojure.core/list
-;;         db/*db*
-;;         {:address-id 7}))
-;;       :message
-;;       (clojure.core/str "Error while fetching " "addresses" " record '" 7 "'")))
-;;    (adl-support.core/do-or-log-error
-;;     (clojure.core/apply
-;;      (clojure.core/symbol
-;;       (clojure.core/str "db/"
-;;                         (adl-support.forms-support/query-name "addresses" :list)))
-;;      (clojure.core/list db/*db*))
-;;     :message
-;;     (clojure.core/str "Error while fetching " "addresses" " list")))))
 
 (defmacro all-keys-present?
   "Return true if all the keys in `keys` are present in the map `m`."

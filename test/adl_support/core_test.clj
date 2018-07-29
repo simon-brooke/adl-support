@@ -52,7 +52,10 @@
       (is (= expected actual) "No exception thrown"))
     (let [expected {:error "java.lang.ArithmeticException: Divide by zero"}
           actual (do-or-return-reason (/ 1 0))]
-      (is (= expected actual) "Exception thrown"))))
+      (is (= expected actual) "Exception thrown"))
+    (let [expected {:error "Hello: java.lang.ArithmeticException: Divide by zero"}
+          actual (do-or-return-reason (/ 1 0) "Hello")]
+      (is (= expected actual) "Exception thrown, with intro"))))
 
 
 ;; These work in REPL, but break in tests. Why?

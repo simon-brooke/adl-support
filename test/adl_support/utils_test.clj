@@ -1,5 +1,6 @@
 (ns adl-support.utils-test
   (:require [clojure.test :refer :all]
+            [adl-support.core :refer [*warn*]]
             [adl-support.utils :refer :all]))
 
 ;; Yes, there's MASSES in utils which ought to be tested. I'll add more tests over time.
@@ -303,4 +304,70 @@
       (is (= expected actual) "With realistic clutter: field with no prompt, in context of entity
           with appropriate property with prompt in current locale"))
     ))
+
+
+(deftest list-related-query-name-tests
+  (testing "list-related-query-name"
+    (let [e1 {:tag :entity,
+              :attrs {:volatility "6", :magnitude "1", :name "genders", :table "genders"},
+              :content [{:tag :documentation,
+                         :content ["All genders which may be assigned to\n    electors."]}
+                        {:tag :key, :attrs nil,
+                         :content [{:tag :property,
+                                    :attrs {:distinct "all", :size "32", :type "string", :name "id"},
+                                    :content [{:tag :prompt,
+                                               :attrs {:locale "en_GB.UTF-8",
+                                                       :prompt "Gender"},
+                                               :content nil}]}]}
+                        {:tag :list, :attrs {:name "Genders", :properties "all"}}
+                        {:tag :form, :attrs {:name "Gender", :properties "all"}}]}
+          e2 {:tag :entity,
+              :attrs {:volatility "6", :magnitude "1", :name "electors", :table "electors"},
+              :content [{:tag :documentation,
+                         :attrs nil,
+                         :content
+                         ["All electors known to the system; electors are
+                          people believed to be entitled to vote in the current
+                          campaign."]}
+                        {:tag :key,
+                         :attrs nil,
+                         :content
+                         [{:tag :property,
+                           :attrs
+                           {:distinct "system",
+                            :immutable "true",
+                            :column "id",
+                            :name "id",
+                            :type "integer",
+                            :required "true"},
+                           :content
+                           [{:tag :generator, :attrs {:action "native"}, :content nil}]}]}
+                        {:tag :property,
+                         :attrs
+                         {:distinct "user",
+                          :column "name",
+                          :name "name",
+                          :type "string",
+                          :required "true",
+                          :size "64"},
+                         :content
+                         [{:tag :prompt,
+                           :attrs {:locale "en_GB.UTF-8", :prompt "Name"},
+                           :content nil}]}
+                        {:tag :property,
+                         :attrs
+                         {:default "Unknown",
+                          :farkey "id",
+                          :entity "genders",
+                          :column "gender",
+                          :type "entity",
+                          :name "gender"},
+                         :content
+                         [{:tag :prompt,
+                           :attrs {:locale "en_GB.UTF-8", :prompt "Gender"},
+                           :content nil}]}]}
+          expected "list-electors-by-gender"
+          actual (list-related-query-name e1 e2)]
+      (is (= expected actual) "just checking..."))))
+
 

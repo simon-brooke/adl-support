@@ -1,6 +1,6 @@
-(ns adl-support.core-test
+(ns adl-support.rest-support-test
   (:require [clojure.test :refer :all]
-            [adl-support.rest_support :refer :all]))
+            [adl-support.rest-support :refer :all]))
 
 
 (deftest if-valid-user-tests
@@ -19,7 +19,7 @@
           actual (valid-user-or-forbid "hello" {:session {:user {:id 4}}})]
       (is (= expected actual) "User in session"))
     (let [expected 403
-          actual (:status (valid-user-or-forbid "hello" {:session {:user {:id 4}}}))]
+          actual (:status (valid-user-or-forbid "hello" {:session {}}))]
       (is (= expected actual) "No user in session"))))
 
 

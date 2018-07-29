@@ -101,6 +101,43 @@
 (def resolve-template (memoize raw-resolve-template))
 
 
+(defmacro compose-exception-reason
+  "Compose and return a sensible reason message for this `exception`."
+  ([exception intro]
+   `(str
+     ~intro
+     (if ~intro ": ")
+     (join
+      "\n\tcaused by: "
+      (reverse
+       (loop [ex# ~exception result# ()]
+         (if-not (nil? ex#)
+           (recur
+            (.getCause ex#)
+            (cons (str
+                   (.getName (.getClass ex#))
+                   ": "
+                   (.getMessage ex#)) result#))
+           result#))))))
+  ([exception]
+   `(compose-exception-reason ~exception nil)))
+
+
+(defmacro compose-reason-and-log
+  "Compose a reason message for this `exception`, log it (with its
+  stacktrace), and return the reason message."
+  ([exception intro]
+   `(let [reason# (compose-exception-reason ~exception ~intro)]
+      (clojure.tools.logging/error
+       reason#
+       "\n"
+       (with-out-str
+         (-> ~exception .printStackTrace)))
+      reason#))
+  ([exception]
+   `(compose-reason-and-log ~exception nil)))
+
+
 (defmacro do-or-log-error
   "Evaluate the supplied `form` in a try/catch block. If the
   keyword param `:message` is supplied, the value will be used
@@ -112,41 +149,8 @@
   `(try
      ~form
      (catch Exception any#
-       (clojure.tools.logging/error
-        (str ~message
-             (with-out-str
-               (-> any# .printStackTrace))))
+       (compose-reason-and-log any# ~message)
        ~error-return)))
-
-
-(defmacro compose-exception-reason
-  "Compose and return a sensible reason message for this `exception`."
-  [exception]
-  `(join
-    "\n\tcaused by: "
-    (reverse
-     (loop [ex# ~exception result# ()]
-       (if-not (nil? ex#)
-         (recur
-          (.getCause ex#)
-          (cons (str
-                 (.getName (.getClass ex#))
-                 ": "
-                 (.getMessage ex#)) result#))
-         result#)))))
-
-
-(defmacro compose-reason-and-log
-  "Compose a reason message for this `exception`, log it (with its
-  stacktrace), and return the reason message."
-  [exception]
-  `(let [reason# (compose-exception-reason ~exception)]
-     (clojure.tools.logging/error
-      (str reason#
-           "\n"
-           (with-out-str
-             (-> ~exception .printStackTrace))))
-     reason#))
 
 
 (defmacro do-or-return-reason
@@ -155,11 +159,13 @@
   succeeds, the map will have a key `:result` whose value is the result;
   otherwise it will have a key `:error` which will be bound to the most
   sensible error message we can construct."
-  [form]
+  ([form intro]
   `(try
      {:result ~form}
      (catch Exception any#
-       {:error (compose-exception-reason any#)})))
+       {:error (compose-exception-reason any# ~intro)})))
+  ([form]
+   `(do-or-return-reason ~form nil)))
 
 
 (defmacro do-or-log-and-return-reason
@@ -205,6 +211,6 @@
    `(try
       ~form
       (catch Exception any#
-        (*warn* (str ~intro ":\n\t" (compose-reason-and-log any#)))
+        (*warn* (compose-reason-and-log any# ~intro ))
         nil))))
 

@@ -1,7 +1,8 @@
 (ns ^{:doc "Application Description Language support library - utility functions."
       :author "Simon Brooke"}
   adl-support.utils
-  (:require [clojure.math.numeric-tower :refer [expt]]
+  (:require [adl-support.core :refer [*warn*]]
+            [clojure.math.numeric-tower :refer [expt]]
             [clojure.pprint :as p]
             [clojure.string :as s]))
 
@@ -40,6 +41,12 @@
   "True if `o` is a Clojure representation of an XML element."
   [o]
   (and (map? o) (:tag o) (:attrs o)))
+
+
+(defmacro entity?
+  "True if `o` is a Clojure representation of an ADL entity."
+  [o]
+  `(= (:tag ~o) :entity))
 
 
 (defn wrap-lines
@@ -294,22 +301,45 @@
   "Return a safe name for the object `o`, given the specified `convention`.
   `o` is expected to be either a string or an element."
   ([o]
-   (if
-     (element? o)
-     (safe-name (:name (:attrs o)))
-     (s/replace (str o) #"[^a-zA-Z0-9-]" "")))
+   (cond
+    (element? o)
+    (safe-name (:name (:attrs o)))
+    true
+    (s/replace (str o) #"[^a-zA-Z0-9-]" "")))
   ([o convention]
-   (if
-     (element? o)
-     (safe-name (:name (:attrs o)) convention)
-     (let [string (str o)]
-       (case convention
-         (:sql :c) (s/replace string #"[^a-zA-Z0-9_]" "_")
-         :c-sharp (s/replace (capitalise string) #"[^a-zA-Z0-9]" "")
-         :java (let
-                 [camel (s/replace (capitalise string) #"[^a-zA-Z0-9]" "")]
-                 (apply str (cons (Character/toLowerCase (first camel)) (rest camel))))
-         (safe-name string))))))
+   (cond
+    (and (entity? o) (= convention :sql))
+    ;; if it's an entity, it's permitted to have a different table name
+    ;; from its entity name. This isn't actually likely, but...
+    (safe-name (or (-> o :attrs :table) (-> o :attrs :name)) :sql)
+    (element? o)
+    (safe-name (:name (:attrs o)))
+    true
+    (let [string (str o)]
+      (case convention
+        (:sql :c) (s/replace string #"[^a-zA-Z0-9_]" "_")
+        :c-sharp (s/replace (capitalise string) #"[^a-zA-Z0-9]" "")
+        :java (let
+                [camel (s/replace (capitalise string) #"[^a-zA-Z0-9]" "")]
+                (apply str (cons (Character/toLowerCase (first camel)) (rest camel))))
+        (safe-name string))))))
+
+
+(defmacro list-related-query-name
+  "Return the canonical name of the HugSQL query to return all records on
+  `farside` which match a given record on `nearside`, where `nearide` and
+  `farside` are both entities."
+  [nearside farside]
+  `(if
+     (and (entity? ~nearside) (entity? ~farside))
+     (str
+      "list-"
+      (safe-name ~farside :sql)
+      "-by-"
+      (singularise (safe-name ~nearside :sql)))
+     (do
+       (*warn* "Argument passed to `list-related-query-name` was a non-entity")
+       nil)))
 
 
 (defn property-for-field
