@@ -366,8 +366,68 @@
                          [{:tag :prompt,
                            :attrs {:locale "en_GB.UTF-8", :prompt "Gender"},
                            :content nil}]}]}
+          property (child e1 #(= (-> % :attrs :name) "gender"))
           expected "list-electors-by-gender"
-          actual (list-related-query-name e1 e2)]
+          actual (list-related-query-name property e2 e1)]
       (is (= expected actual) "just checking..."))))
+
+
+(deftest list-related-query-name-tests
+  (testing "list-related-query-name"
+    (let [e1 {:tag :entity
+              :attrs {:name "dwellings"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :attrs {:name "id" :type "integer" :distinct "system"}}]}
+                        {:tag :property
+                         :attrs {:name "address" :type "entity" :entity "addresses"}}]}
+          e2 {:tag :entity
+              :attrs {:name "addresses"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :attrs {:name "id" :type "integer" :distinct "system"}}]}
+                        {:tag :property
+                         :attrs {:name "dwellings" :type "list" :entity "dwellings"}}]}]
+      (let [property {:tag :property
+                      :attrs {:name "address" :type "entity" :entity "addresses"}}
+            expected "list-dwellings-by-address"
+            actual (list-related-query-name property e1 e2)]
+        (is (= expected actual) "Entity property"))
+      (let [property {:tag :property
+                      :attrs {:name "dwellings" :type "list" :entity "dwellings"}}
+            expected "list-dwellings-by-address"
+            actual (list-related-query-name property e2 e1)]
+        (is (= expected actual) "List property")))
+    (let [e1 {:tag :entity
+              :attrs {:name "teams"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :attrs {:name "id" :type "integer" :distinct "system"}}]}
+                        {:tag :property
+                         :attrs {:name "members" :type "link" :entity "canvassers"}}
+                        {:tag :property
+                         :attrs {:name "organisers" :type "link" :entity "canvassers"}}]}
+          e2 {:tag :entity
+              :attrs {:name "canvassers"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :attrs {:name "id" :type "integer" :distinct "system"}}]}
+                        {:tag :property
+                         :attrs {:name "memberships" :type "link" :entity "teams"}}]}]
+      (let [property {:tag :property
+                      :attrs {:name "members" :type "link" :entity "canvassers"}}
+            expected "list-members-by-team"
+            actual (list-related-query-name property e1 e2)]
+        (is (= actual expected) "Link property - members"))
+      (let [property {:tag :property
+                      :attrs {:name "organisers" :type "link" :entity "canvassers"}}
+            expected "list-organisers-by-team"
+            actual (list-related-query-name property e1 e2)]
+        (is (= actual expected) "Link property - organisers"))
+      (let [property {:tag :property
+                         :attrs {:name "memberships" :type "link" :entity "teams"}}
+            expected "list-memberships-by-canvasser"
+            actual (list-related-query-name property e2 e1)]
+        (is (= actual expected) "Link property - membersips")))))
 
 

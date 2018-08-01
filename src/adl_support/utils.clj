@@ -313,7 +313,7 @@
     ;; from its entity name. This isn't actually likely, but...
     (safe-name (or (-> o :attrs :table) (-> o :attrs :name)) :sql)
     (element? o)
-    (safe-name (:name (:attrs o)))
+    (safe-name (:name (:attrs o)) convention)
     true
     (let [string (str o)]
       (case convention
@@ -324,19 +324,34 @@
                 (apply str (cons (Character/toLowerCase (first camel)) (rest camel))))
         (safe-name string))))))
 
+;; (safe-name "address-id" :sql)
+;; (safe-name {:tag :property :attrs {:name "address-id"}} :sql)
+
 
 (defmacro list-related-query-name
   "Return the canonical name of the HugSQL query to return all records on
   `farside` which match a given record on `nearside`, where `nearide` and
   `farside` are both entities."
-  [nearside farside]
+  [property nearside farside]
   `(if
-     (and (entity? ~nearside) (entity? ~farside))
-     (str
-      "list-"
-      (safe-name ~farside :sql)
-      "-by-"
-      (singularise (safe-name ~nearside :sql)))
+     (and
+      (property? ~property)
+      (entity? ~nearside)
+      (entity? ~farside))
+     (case (-> ~property :attrs :type)
+       "link" (str "list-"
+                   (safe-name ~property :sql) "-by-"
+                   (singularise (safe-name ~nearside :sql)))
+       "list" (str "list-"
+                   (safe-name ~farside :sql) "-by-"
+                   (singularise (safe-name ~nearside :sql)))
+       "entity" (str "list-"
+                   (safe-name ~nearside :sql) "-by-"
+                   (singularise (safe-name ~farside :sql)))
+        ;; default
+       (str "ERROR-bad-property-type-"
+            (-> ~property :attrs :type) "-of-"
+            (-> ~property :attrs :name)))
      (do
        (*warn* "Argument passed to `list-related-query-name` was a non-entity")
        nil)))
