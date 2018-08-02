@@ -309,22 +309,22 @@
     (= (max n1 n2) 1)))
 
 
-(defn link-related-property-name
+(defn link-related-query-name
   "link is tricky. If there's exactly than one link between the two
   entities, we need to generate the same name from both
   ends of the link"
   [property nearside farside]
   (if (unique-link? nearside farside)
-    (let [ordered (sort-by (-> % :attrs :name) (list nearside farside))
+    (let [ordered (sort-by #(-> % :attrs :name) (list nearside farside))
           e1 (first ordered)
           e2 (nth ordered 1)]
       (str "list-"
            (safe-name e1 :sql)
            "-by-"
-           (safe-name e2 :sql))
+           (safe-name e2 :sql)))
       (str "list-"
-           (safe-name ~property :sql) "-by-"
-           (singularise (safe-name ~nearside :sql))))))
+           (safe-name property :sql) "-by-"
+           (singularise (safe-name nearside :sql)))))
 
 
 (defn link-table-name
@@ -352,22 +352,19 @@
   `farside` which match a given record on `nearside`, where `nearide` and
   `farside` are both entities."
   [property nearside farside]
-  `(if
+  (if
      (and
-      (property? ~property)
-      (entity? ~nearside)
-      (entity? ~farside))
-     (case (-> ~property :attrs :type)
-       ;; link is tricky. If there's exactly than one link between the two
-       ;; entities, we need to generate the same name from both
-       ;; ends of the link
-       "link" (link-related-query-name)
+      (property? property)
+      (entity? nearside)
+      (entity? farside))
+     (case (-> property :attrs :type)
+       "link" (link-related-query-name property nearside farside)
        "list" (str "list-"
-                   (safe-name ~farside :sql) "-by-"
-                   (singularise (safe-name ~nearside :sql)))
+                   (safe-name farside :sql) "-by-"
+                   (singularise (safe-name nearside :sql)))
        "entity" (str "list-"
-                   (safe-name ~farside :sql) "-by-"
-                   (singularise (safe-name ~nearside :sql)))
+                   (safe-name nearside :sql) "-by-"
+                   (singularise (safe-name farside :sql)))
         ;; default
        (str "ERROR-bad-property-type-"
             (-> ~property :attrs :type) "-of-"

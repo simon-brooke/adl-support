@@ -366,7 +366,7 @@
                          [{:tag :prompt,
                            :attrs {:locale "en_GB.UTF-8", :prompt "Gender"},
                            :content nil}]}]}
-          property (child e1 #(= (-> % :attrs :name) "gender"))
+          property (child e2 #(= (-> % :attrs :name) "gender"))
           expected "list-electors-by-gender"
           actual (list-related-query-name property e2 e1)]
       (is (= expected actual) "just checking..."))
@@ -426,4 +426,24 @@
             actual (list-related-query-name property e2 e1)]
         (is (= actual expected) "Link property - membersips")))))
 
+;; (def e1 {:tag :entity
+;;               :attrs {:name "teams"}
+;;               :content [{:tag :key
+;;                          :content [{:tag :property
+;;                                     :attrs {:name "id" :type "integer" :distinct "system"}}]}
+;;                         {:tag :property
+;;                          :attrs {:name "members" :type "link" :entity "canvassers"}}
+;;                         {:tag :property
+;;                          :attrs {:name "organisers" :type "link" :entity "canvassers"}}]})
+;; (def e2 {:tag :entity
+;;               :attrs {:name "canvassers"}
+;;               :content [{:tag :key
+;;                          :content [{:tag :property
+;;                                     :attrs {:name "id" :type "integer" :distinct "system"}}]}
+;;                         {:tag :property
+;;                          :attrs {:name "memberships" :type "link" :entity "teams"}}]})
 
+;; (def property {:tag :property
+;;                       :attrs {:name "members" :type "link" :entity "canvassers"}})
+
+;; (list-related-query-name property e1 e2)
