@@ -304,8 +304,12 @@
 (defn unique-link?
   "True if there is exactly one link between entities `e1` and `e2`."
   [e1 e2]
-  (let [n1 (count (children-with-tag e1 :property #(= (-> % :attrs :name)(-> e2 :attrs :name))))
-        n2 (count (children-with-tag e2 :property #(= (-> % :attrs :name)(-> e1 :attrs :name))))]
+  (let [n1 (count (children-with-tag e1 :property
+                                     #(and (= (-> % :attrs :type) "link")
+                                           (= (-> % :attrs :entity)(-> e2 :attrs :name)))))
+        n2 (count (children-with-tag e2 :property
+                                     #(and (= (-> % :attrs :type) "link")
+                                           (= (-> % :attrs :entity)(-> e1 :attrs :name)))))]
     (= (max n1 n2) 1)))
 
 
@@ -315,13 +319,11 @@
   ends of the link"
   [property nearside farside]
   (if (unique-link? nearside farside)
-    (let [ordered (sort-by #(-> % :attrs :name) (list nearside farside))
-          e1 (first ordered)
-          e2 (nth ordered 1)]
+    (let [ordered (sort-by #(-> % :attrs :name) (list nearside farside))]
       (str "list-"
-           (safe-name e1 :sql)
+           (safe-name (first ordered) :sql)
            "-by-"
-           (safe-name e2 :sql)))
+           (safe-name (nth ordered 1) :sql)))
       (str "list-"
            (safe-name property :sql) "-by-"
            (singularise (safe-name nearside :sql)))))
@@ -342,9 +344,9 @@
            (:name (:attrs e1)) (:name (:attrs e2)))))))
   ([property e1 e2]
    (if (unique-link? e1 e2)
+     (link-table-name e1 e2)
      (s/join
-       "_" (cons "ln" (map #(:name (:attrs %)) (list property e1 e2))))
-     (link-table-name e1 e2))))
+       "_" (cons "ln" (map #(:name (:attrs %)) (list property e1)))))))
 
 
 (defn list-related-query-name

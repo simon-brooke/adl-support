@@ -426,24 +426,83 @@
             actual (list-related-query-name property e2 e1)]
         (is (= actual expected) "Link property - membersips")))))
 
-;; (def e1 {:tag :entity
-;;               :attrs {:name "teams"}
-;;               :content [{:tag :key
-;;                          :content [{:tag :property
-;;                                     :attrs {:name "id" :type "integer" :distinct "system"}}]}
-;;                         {:tag :property
-;;                          :attrs {:name "members" :type "link" :entity "canvassers"}}
-;;                         {:tag :property
-;;                          :attrs {:name "organisers" :type "link" :entity "canvassers"}}]})
-;; (def e2 {:tag :entity
-;;               :attrs {:name "canvassers"}
-;;               :content [{:tag :key
-;;                          :content [{:tag :property
-;;                                     :attrs {:name "id" :type "integer" :distinct "system"}}]}
-;;                         {:tag :property
-;;                          :attrs {:name "memberships" :type "link" :entity "teams"}}]})
 
-;; (def property {:tag :property
-;;                       :attrs {:name "members" :type "link" :entity "canvassers"}})
+(deftest link-table-name-tests
+  (testing "link-table-name"
+    (let [e1 {:tag :entity
+              :attrs {:name "teams"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :attrs {:name "id" :type "integer" :distinct "system"}}]}
+                        {:tag :property
+                         :attrs {:name "members" :type "link" :entity "canvassers"}}
+                        {:tag :property
+                         :attrs {:name "organisers" :type "link" :entity "canvassers"}}]}
+          e2 {:tag :entity
+              :attrs {:name "canvassers"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :attrs {:name "id" :type "integer" :distinct "system"}}]}
+                        {:tag :property
+                         :attrs {:name "memberships" :type "link" :entity "teams"}}
+                        {:tag :property
+                         :attrs {:name "roles" :type "link" :entity "roles"}}]}
+          e3 {:tag :entity
+              :attrs {:name "roles"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :type "string"
+                                    :distinct "all"
+                                    :name "id"}]}]}]
+      (let [property {:tag :property
+                      :attrs {:name "members" :type "link" :entity "canvassers"}}
+            expected "ln_members_teams"
+            actual (link-table-name property e1 e2)]
+        (is (= actual expected) "Link property - members"))
+      (let [property {:tag :property
+                      :attrs {:name "organisers" :type "link" :entity "canvassers"}}
+            expected "ln_organisers_teams"
+            actual (link-table-name property e1 e2)]
+        (is (= actual expected) "Link property - organisers"))
+      (let [property {:tag :property
+                         :attrs {:name "memberships" :type "link" :entity "teams"}}
+            expected "ln_memberships_canvassers"
+            actual (link-table-name property e2 e1)]
+        (is (= actual expected) "Link property - membersips"))
+      (let [property {:tag :property
+                         :attrs {:name "roles" :type "link" :entity "roles"}}
+            expected "ln_canvassers_roles"
+            actual (link-table-name property e2 e3)]
+        (is (= actual expected) "Link property - roles")))))
 
-;; (list-related-query-name property e1 e2)
+
+(deftest unique-link-tests
+  (testing "unique-link?"
+    (let [e1 {:tag :entity
+              :attrs {:name "teams"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :attrs {:name "id" :type "integer" :distinct "system"}}]}
+                        {:tag :property
+                         :attrs {:name "members" :type "link" :entity "canvassers"}}
+                        {:tag :property
+                         :attrs {:name "organisers" :type "link" :entity "canvassers"}}]}
+          e2 {:tag :entity
+              :attrs {:name "canvassers"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :attrs {:name "id" :type "integer" :distinct "system"}}]}
+                        {:tag :property
+                         :attrs {:name "memberships" :type "link" :entity "teams"}}
+                        {:tag :property
+                         :attrs {:name "roles" :type "link" :entity "roles"}}]}
+          e3 {:tag :entity
+              :attrs {:name "roles"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :type "string"
+                                    :distinct "all"
+                                    :name "id"}]}]}]
+      (is (= false (unique-link? e1 e2)) "There are two logical links, three link properties, between e1 and e2")
+      (is (= true (unique-link? e2 e3)) "There is only one link between e2 and e3"))))
+
