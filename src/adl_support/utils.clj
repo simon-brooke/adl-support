@@ -90,33 +90,6 @@
   (sort #(compare (:name (:attrs %1)) (:name (:attrs %2))) elements))
 
 
-(defn link-table-name
-  "Canonical name of a link table between entity `e1` and entity `e2`. However, there
-  may be different links between the same two tables with different semantics; if
-  `property` is specified, and if more than one property in `e1` links to `e2`, generate
-  a more specific link name."
-  ([e1 e2]
-   (s/join
-     "_"
-     (cons
-       "ln"
-       (sort
-         (list
-           (:name (:attrs e1)) (:name (:attrs e2)))))))
-  ([property e1 e2]
-   (if (count
-         (descendants
-           e1
-           #(and
-              (= (-> % :attrs :type) "link")
-              (=
-                (-> % :attrs :entity)
-                (-> property :attrs :entity)))))
-     (s/join
-       "_" (cons "ln" (map #(:name (:attrs %)) (list property e1 e2))))
-     (link-table-name e1 e2))))
-
-
 (defn children
   "Return the children of this `element`; if `predicate` is passed, return only those
   children satisfying the predicate."
@@ -328,7 +301,53 @@
 ;; (safe-name {:tag :property :attrs {:name "address-id"}} :sql)
 
 
-(defmacro list-related-query-name
+(defn unique-link?
+  "True if there is exactly one link between entities `e1` and `e2`."
+  [e1 e2]
+  (let [n1 (count (children-with-tag e1 :property #(= (-> % :attrs :name)(-> e2 :attrs :name))))
+        n2 (count (children-with-tag e2 :property #(= (-> % :attrs :name)(-> e1 :attrs :name))))]
+    (= (max n1 n2) 1)))
+
+
+(defn link-related-property-name
+  "link is tricky. If there's exactly than one link between the two
+  entities, we need to generate the same name from both
+  ends of the link"
+  [property nearside farside]
+  (if (unique-link? nearside farside)
+    (let [ordered (sort-by (-> % :attrs :name) (list nearside farside))
+          e1 (first ordered)
+          e2 (nth ordered 1)]
+      (str "list-"
+           (safe-name e1 :sql)
+           "-by-"
+           (safe-name e2 :sql))
+      (str "list-"
+           (safe-name ~property :sql) "-by-"
+           (singularise (safe-name ~nearside :sql))))))
+
+
+(defn link-table-name
+  "Canonical name of a link table between entity `e1` and entity `e2`. However, there
+  may be different links between the same two tables with different semantics; if
+  `property` is specified, and if more than one property in `e1` links to `e2`, generate
+  a more specific link name."
+  ([e1 e2]
+   (s/join
+     "_"
+     (cons
+       "ln"
+       (sort
+         (list
+           (:name (:attrs e1)) (:name (:attrs e2)))))))
+  ([property e1 e2]
+   (if (unique-link? e1 e2)
+     (s/join
+       "_" (cons "ln" (map #(:name (:attrs %)) (list property e1 e2))))
+     (link-table-name e1 e2))))
+
+
+(defn list-related-query-name
   "Return the canonical name of the HugSQL query to return all records on
   `farside` which match a given record on `nearside`, where `nearide` and
   `farside` are both entities."
@@ -339,15 +358,16 @@
       (entity? ~nearside)
       (entity? ~farside))
      (case (-> ~property :attrs :type)
-       "link" (str "list-"
-                   (safe-name ~property :sql) "-by-"
-                   (singularise (safe-name ~nearside :sql)))
+       ;; link is tricky. If there's exactly than one link between the two
+       ;; entities, we need to generate the same name from both
+       ;; ends of the link
+       "link" (link-related-query-name)
        "list" (str "list-"
                    (safe-name ~farside :sql) "-by-"
                    (singularise (safe-name ~nearside :sql)))
        "entity" (str "list-"
-                   (safe-name ~nearside :sql) "-by-"
-                   (singularise (safe-name ~farside :sql)))
+                   (safe-name ~farside :sql) "-by-"
+                   (singularise (safe-name ~nearside :sql)))
         ;; default
        (str "ERROR-bad-property-type-"
             (-> ~property :attrs :type) "-of-"

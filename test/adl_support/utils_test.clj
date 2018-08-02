@@ -369,11 +369,7 @@
           property (child e1 #(= (-> % :attrs :name) "gender"))
           expected "list-electors-by-gender"
           actual (list-related-query-name property e2 e1)]
-      (is (= expected actual) "just checking..."))))
-
-
-(deftest list-related-query-name-tests
-  (testing "list-related-query-name"
+      (is (= expected actual) "just checking..."))
     (let [e1 {:tag :entity
               :attrs {:name "dwellings"}
               :content [{:tag :key
