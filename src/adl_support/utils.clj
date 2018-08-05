@@ -474,9 +474,9 @@
   "Return `true` it the value of this `property` may be set from user-supplied data."
   [property]
   (and
-   (= (:tag property) :property)
-   (not (#{"link"} (:type (:attrs property))))
-   (not (system-generated? property))))
+    (= (:tag property) :property)
+    (not (#{"link" "list"} (:type (:attrs property))))
+    (not (system-generated? property))))
 
 
 (defmacro all-properties
@@ -507,6 +507,17 @@
   `(filter
      insertable?
      (all-properties ~entity)))
+
+
+(defn required-properties
+  "Return the properties of this `entity` which are required and are not
+  system generated."
+  [entity]
+  (filter
+    #(and
+       (= (:required (:attrs %)) "true")
+       (not (system-generated? %)))
+    (descendants-with-tag entity :property)))
 
 
 (defmacro key-properties
