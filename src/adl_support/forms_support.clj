@@ -92,3 +92,14 @@
   "Return true if all the keys in `keys` are present in the map `m`."
   [m keys]
   `(clojure.set/subset? (set ~keys) (set (keys ~m))))
+
+
+(defmacro prepare-insertion-params
+  "Params for insertion into the database must have keys for all fields in the
+  insert query, even if the value of some of those keys is nil. Massage these
+  `params` to have a value for each field in these `fields`."
+  [params fields]
+  `(merge
+    (reduce {} (map #(hash-map (keyword %) nil) ~fields))
+    ~params))
+
