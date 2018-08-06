@@ -1,6 +1,6 @@
 (ns adl-support.forms-support
   (:require [adl-support.core :refer [do-or-log-error do-or-return-reason]]
-            [adl-support.utils :refer [safe-name singularise]]
+            [adl-support.utils :refer [descendants-with-tag safe-name singularise]]
             [clojure.core.memoize :as memo]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
@@ -103,3 +103,10 @@
     (reduce {} (map #(hash-map (keyword %) nil) ~fields))
     ~params))
 
+(defn property-defaults
+  [entity]
+  (reduce
+    merge {}
+    (map
+      #(hash-map (keyword (-> % :attrs :name)) (-> % :attrs :default))
+      (descendants-with-tag entity :property #(-> % :attrs :default)))))
