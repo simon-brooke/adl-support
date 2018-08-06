@@ -49,14 +49,12 @@
 (defn raw-massage-params
   "Sending empty strings, or numbers as strings, to the database often isn't
   helpful. Massage these `params` and `form-params` to eliminate these problems.
-  We must take key field values out of just params, but if form-params are present
-  we should take all other values out of form-params - because we need the key to
-  load the form in the first place. `form-params` always override `params`.
-
-  **NOTE THAT** the parameter `key-fields` is deprecated and ignored."
-  ([params form-params key-fields]
+  Date and time fields also need massaging."
+  ([request entity]
    (let
-     [p (reduce
+     [params (:params request)
+      form-params (:form-params request)
+      p (reduce
          merge
          {}
          (map
@@ -74,10 +72,8 @@
         (map
          #(massage-value % form-params)
          (keys form-params))))))
-  ([request key-fields]
-   (raw-massage-params (:params request) (:form-params request) key-fields))
   ([request]
-   (raw-massage-params (:params request) (:form-params request) #{})))
+   (raw-massage-params request nil)))
 
 
 (def massage-params

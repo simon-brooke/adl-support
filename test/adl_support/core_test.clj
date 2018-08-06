@@ -4,29 +4,14 @@
 
 (deftest massage-params-tests
   (testing "Massaging of params"
-    (let [expected {:id 67}
-          actual (massage-params {:id 67} {} #{:id})]
-      (is (= expected actual) "numeric param"))
-    (let [expected {:id 67}
-          actual (massage-params {:id "67"} {} #{:id})]
-      (is (= expected actual) "string param"))
-    (let [expected {:id 67}
-          actual (massage-params {"id" "67"} {} #{:id})]
-      (is (= expected actual) "string keyword"))
-    (let [expected {:id 67}
-          actual (massage-params {:id 60} {:id 67} #{:id})]
-      (is (= expected actual) "params and form-params differ"))
-    (let [expected {:id 67 :offset 0 :limit 50}
-          actual (massage-params {:id 60} {:id "67" :offset "0" :limit "50"} #{:id})]
-      (is (= expected actual) "prefer values from form-params"))
     (let [expected {:id 67 :offset 0 :limit 50}
           actual (massage-params {:params {:id "67" :offset "0" :limit "50"} :form-params {}})]
       (is (= expected actual) "Request with no form params"))
     (let [expected {:id 67 :offset 0 :limit 50}
           actual (massage-params {:params {:id "0" :offset "1000" :limit "150"}
                                   :form-params {:id "67" :offset "0" :limit "50"}})]
-      (is (= expected actual) "Request with form params, params and form params differ"))
-      ))
+      (is (= expected actual) "Request with form params, params and form params differ"))))
+
 
 (deftest compose-exception-reason-tests
   (testing "Compose exception reason"

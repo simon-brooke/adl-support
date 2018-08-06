@@ -1,5 +1,5 @@
 (ns adl-support.forms-support
-  (:require [adl-support.core :refer [do-or-log-error do-or-return-reason]]
+  (:require [adl-support.core :refer :all]
             [adl-support.utils :refer [descendants-with-tag safe-name singularise]]
             [clojure.core.memoize :as memo]
             [clojure.data.json :as json]
@@ -100,8 +100,9 @@
   `params` to have a value for each field in these `fields`."
   [params fields]
   `(merge
-    (reduce {} (map #(hash-map (keyword %) nil) ~fields))
+    (reduce merge {} (map #(hash-map (keyword %) nil) ~fields))
     ~params))
+
 
 (defn property-defaults
   [entity]
