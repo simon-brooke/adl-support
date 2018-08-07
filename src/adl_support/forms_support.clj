@@ -98,6 +98,8 @@
   "Params for insertion into the database must have keys for all fields in the
   insert query, even if the value of some of those keys is nil. Massage these
   `params` to have a value for each field in these `fields`."
+  ;; TODO: should intelligently handle dates and times, but that might imply
+  ;; access to ADL at runtime!
   [params fields]
   `(merge
     (reduce merge {} (map #(hash-map (keyword %) nil) ~fields))
