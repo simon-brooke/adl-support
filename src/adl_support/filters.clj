@@ -20,7 +20,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(def *default-international-dialing-prefix*
+(def ^:dynamic *default-international-dialing-prefix*
   "The international dialing prefix to use, if none is specified."
   "44")
 

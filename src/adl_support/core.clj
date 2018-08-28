@@ -1,5 +1,6 @@
 (ns adl-support.core
   (:require [clojure.core.memoize :as memo]
+            [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :refer [split join]]
             [clojure.tools.logging]))
@@ -36,12 +37,15 @@
         vr (if
              (string? v)
              (try
-               (read-string v)
+               (json/read-str v)
                (catch Exception _ nil)))]
     (cond
      (nil? v) {}
      (= v "") {}
-     (number? vr) {(keyword k) vr}
+     (and
+       (number? vr)
+       ;; there's a problem that json/read-str will read "07777 888999" as 7777
+       (re-matches #"^[0-9.]+$" v)) {(keyword k) vr}
      true
      {(keyword k) v})))
 

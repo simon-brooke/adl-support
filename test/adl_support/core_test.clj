@@ -10,7 +10,10 @@
     (let [expected {:id 67 :offset 0 :limit 50}
           actual (massage-params {:params {:id "0" :offset "1000" :limit "150"}
                                   :form-params {:id "67" :offset "0" :limit "50"}})]
-      (is (= expected actual) "Request with form params, params and form params differ"))))
+      (is (= expected actual) "Request with form params, params and form params differ"))
+    (let [expected {:phone "07777 888999"}
+          actual (massage-params {:params {:phone "07777 888999"}})]
+      (is (= expected actual) "A phone number with a space in needs to be treated as a string"))))
 
 
 (deftest compose-exception-reason-tests
