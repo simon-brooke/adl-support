@@ -500,6 +500,14 @@
     (user-distinct-properties entity))))
 
 
+(defn column-name
+  "Return, as a string, the name for the column which represents this `property`."
+  [property]
+  (safe-name
+    (or (-> property :attrs :column) (-> property :attrs :name))
+    :sql))
+
+
 (defmacro insertable-properties
   "Return all the properties of this `entity` (including key properties) into
   which user-supplied data can be inserted"
