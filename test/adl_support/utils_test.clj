@@ -571,4 +571,30 @@
            "In :sql convention, the column-name variant is preferred, and hyphens replaced with underscores"))))
 
 
+(deftest key-names-tests
+  (testing "key-names"
+    (let [e1 {:tag :entity
+              :attrs {:name "canvass-teams" :table "team"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :attrs {:name "id" :type "integer" :distinct "system"}}]}
+                        {:tag :property
+                         :attrs {:name "members" :type "link" :entity "canvassers"}}
+                        {:tag :property
+                         :attrs {:name "organisers" :type "link" :entity "canvassers"}}]}
+          e2 {:tag :entity
+              :attrs {:name "canvass-teams" :table "team"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :attrs {:name "id" :type "integer" :distinct "system"}}
+                                   {:tag :property
+                                    :attrs {:name "shard" :type "string" :default "SW"}}]}
+                        {:tag :property
+                         :attrs {:name "members" :type "link" :entity "canvassers"}}
+                        {:tag :property
+                         :attrs {:name "organisers" :type "link" :entity "canvassers"}}]}]
+      (is (= (key-names e1) #{"id"}))
+      (is (= (key-names e1 true) #{:id}))
+      (is (= (key-names e2) #{"id" "shard"}))
+      (is (= (key-names e2 true) #{:id :shard})))))
 
