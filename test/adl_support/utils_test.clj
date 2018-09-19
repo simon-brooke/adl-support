@@ -506,3 +506,69 @@
       (is (= false (unique-link? e1 e2)) "There are two logical links, three link properties, between e1 and e2")
       (is (= true (unique-link? e2 e3)) "There is only one link between e2 and e3"))))
 
+(deftest capitalise-tests
+  (testing "capitalise"
+    (is (= (capitalise "the quick brown fox jumped over the lazy dog") "The Quick Brown Fox Jumped Over The Lazy Dog"))))
+
+(deftest safe-name-tests
+  (testing "safe-name"
+     (let [e1 {:tag :entity
+              :attrs {:name "canvass-teams" :table "team"}
+              :content [{:tag :key
+                         :content [{:tag :property
+                                    :attrs {:name "id" :type "integer" :distinct "system"}}]}
+                        {:tag :property
+                         :attrs {:name "members" :type "link" :entity "canvassers"}}
+                        {:tag :property
+                         :attrs {:name "organisers" :type "link" :entity "canvassers"}}]}
+           p1 {:tag :property
+                                    :attrs {:name "id" :type "integer" :distinct "system"}}
+           p2 {:tag :property
+               :attrs {:name "with_underscore" :column "with-hyphen" :type "integer"}}]
+       (is
+         (= (safe-name "the quick brown fox jumped over the lazy dog")
+            "thequickbrownfoxjumpedoverthelazydog")
+         "absent a convention, spaces are suppressed")
+       (is
+         (= (safe-name "the quick brown fox jumped over the lazy dog" :c)
+            "the_quick_brown_fox_jumped_over_the_lazy_dog")
+         "in :c convention, spaces are replaced with underscores")
+       (is
+         (= (safe-name "the quick brown fox jumped over the lazy dog" :c-sharp)
+            "TheQuickBrownFoxJumpedOverTheLazyDog")
+         "in :c-sharp convention spaces are suppressed and all words camel cased")
+       (is
+         (= (safe-name "the quick brown fox jumped over the lazy dog" :java)
+            "theQuickBrownFoxJumpedOverTheLazyDog")
+         "in :java convention spaces are suppressed and embedded words camel cased")
+       (is
+         (= (safe-name "the quick brown fox jumped over the lazy dog" :sql)
+            "the_quick_brown_fox_jumped_over_the_lazy_dog")
+         "in :sql convention, spaces are replaced with underscores")
+       (is (= (safe-name e1) "canvass-teams"))
+       (is (= (safe-name e1 :c) "canvass_teams")
+           "In :c convention, hyphen is replaced by underscore")
+       (is (= (safe-name e1 :c-sharp) "CanvassTeams")
+           "In :c-sharp convention, hyphen is suppressed and words capitalised")
+       (is (= (safe-name e1 :java) "canvassTeams")
+           "In :java convention, hyphen is suppressed and embedded words capitalised")
+       (is (= (safe-name e1 :sql) "team")
+           "In :sql convention, the :table attribute is preferred")
+       (is (= (safe-name p1) "id"))
+       (is (= (safe-name p1 :c) "id"))
+       (is (= (safe-name p1 :c-sharp) "Id"))
+       (is (= (safe-name p1 :java) "id"))
+       (is (= (safe-name p1 :sql) "id"))
+       (is (= (safe-name p2) "withunderscore")
+           "Absent a convention, underscore is not considered safe")
+       (is (= (safe-name p2 :c) "with_underscore")
+           "In :c convention, underscore is considered safe")
+       (is (= (safe-name p2 :c-sharp) "WithUnderscore")
+           "In :c-sharp convention, initial letters are capialised and underscore is suppressed")
+       (is (= (safe-name p2 :java) "withUnderscore")
+           "In :java convention, underscore is suppressed and embedded words capitalised")
+       (is (= (safe-name p2 :sql) "with_hyphen")
+           "In :sql convention, the column-name variant is preferred, and hyphens replaced with underscores"))))
+
+
+

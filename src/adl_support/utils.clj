@@ -261,7 +261,7 @@
       " "
       (map
         #(apply str (cons (Character/toUpperCase (first %)) (rest %)))
-        (s/split s #"[ \t\r\n]+")))
+        (s/split s #"[^a-zA-Z0-9]+")))
     s))
 
 
@@ -272,30 +272,36 @@
 
 (defn safe-name
   "Return a safe name for the object `o`, given the specified `convention`.
-  `o` is expected to be either a string or an element."
+  `o` is expected to be either a string or an element. Recognised values for
+  `convention` are: #{:c :c-sharp :java :sql}"
   ([o]
    (cond
-    (element? o)
-    (safe-name (:name (:attrs o)))
-    true
-    (s/replace (str o) #"[^a-zA-Z0-9-]" "")))
+     (element? o)
+     (safe-name (:name (:attrs o)))
+     true
+     (s/replace (str o) #"[^a-zA-Z0-9-]" "")))
   ([o convention]
    (cond
-    (and (entity? o) (= convention :sql))
-    ;; if it's an entity, it's permitted to have a different table name
-    ;; from its entity name. This isn't actually likely, but...
-    (safe-name (or (-> o :attrs :table) (-> o :attrs :name)) :sql)
-    (element? o)
-    (safe-name (:name (:attrs o)) convention)
-    true
-    (let [string (str o)]
-      (case convention
-        (:sql :c) (s/replace string #"[^a-zA-Z0-9_]" "_")
-        :c-sharp (s/replace (capitalise string) #"[^a-zA-Z0-9]" "")
-        :java (let
-                [camel (s/replace (capitalise string) #"[^a-zA-Z0-9]" "")]
-                (apply str (cons (Character/toLowerCase (first camel)) (rest camel))))
-        (safe-name string))))))
+     (and (entity? o) (= convention :sql))
+     ;; if it's an entity, it's permitted to have a different table name
+     ;; from its entity name. This isn't actually likely, but...
+     (safe-name (or (-> o :attrs :table) (-> o :attrs :name)) :sql)
+     (and (property? o) (= convention :sql))
+     ;; if it's a property, it's entitle to have a different column name
+     ;; from its property name.
+     (safe-name (or (-> o :attrs :column) (-> o :attrs :name)) :sql)
+     (element? o)
+     (safe-name (:name (:attrs o)) convention)
+     true
+     (let [string (str o)
+           capitalised (capitalise string)]
+       (case convention
+         (:sql :c) (s/replace string #"[^a-zA-Z0-9_]" "_")
+         :c-sharp (s/replace capitalised #"[^a-zA-Z0-9]" "")
+         :java (let
+                 [camel (s/replace capitalised #"[^a-zA-Z0-9]" "")]
+                 (apply str (cons (Character/toLowerCase (first camel)) (rest camel))))
+         (safe-name string))))))
 
 ;; (safe-name "address-id" :sql)
 ;; (safe-name {:tag :property :attrs {:name "address-id"}} :sql)
