@@ -1,4 +1,4 @@
-(defproject adl-support "0.1.4"
+(defproject adl-support "0.1.5-SNAPSHOT"
   :description "A small library of functions called by generated ADL code."
   :url "https://github.com/simon-brooke/adl-support"
   :license {:name "MIT License"
@@ -16,9 +16,8 @@
   :deploy-repositories [["releases" :clojars]
                         ["snapshots" :clojars]]
 
-  ;; `lein release` doesn't work with `git flow release`. To use
-  ;; `lein release`, first merge `develop` into `master`, and then, in branch
-  ;; `master`, run `lein release`
+  ;; `lein release` doesn't play nice with `git flow release`. Run `lein release` in the
+  ;; `develop` branch, then reset the `master` branch to the release tag.
 
   :release-tasks [["vcs" "assert-committed"]
                   ["clean"]
