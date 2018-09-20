@@ -13,6 +13,9 @@
   :plugins [[lein-codox "0.10.4"]
             [lein-release "1.1.3"]]
 
+  :deploy-repositories [["releases" :clojars]
+                        ["snapshots" :clojars]]
+
   ;; `lein release` doesn't work with `git flow release`. To use
   ;; `lein release`, first merge `develop` into `master`, and then, in branch
   ;; `master`, run `lein release`
