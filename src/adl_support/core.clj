@@ -1,6 +1,9 @@
 (ns adl-support.core
-  (:require [clojure.java.io :as io]
-            [clojure.string :refer [split]]))
+  (:require [clojure.core.memoize :as memo]
+            [clojure.data.json :as json]
+            [clojure.java.io :as io]
+            [clojure.string :refer [split join]]
+            [clojure.tools.logging]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;
@@ -26,71 +29,64 @@
   (fn [s] (println s)))
 
 
-(defn query-string-to-map
-  "A `query-string` - the query-part of a URL - comprises generally
-  `<name>=<value>&<name>=<value>...`; reduce such a string to a map.
-  If `query-string` is nil or empty return an empty map."
-  [query-string]
-  (if
-    (empty? query-string)
-    {}
-    (reduce
-      merge
-      (map
-        #(let [pair (split % #"=")]
-           (if (= (count pair) 2)
-             (let
-               [v (try
-                    (read-string (nth pair 1))
-                    (catch Exception _
-                      (nth pair 1)))
-                value (if (number? v) v (str v))]
-               (hash-map (keyword (first pair)) value))
-             {}))
-        (split query-string #"\&")))))
-
-
 (defn massage-value
+  "Return a map with one key, this `k` as a keyword, whose value is the binding of
+  `k` in map `m`, as read by read."
   [k m]
   (let [v (m k)
         vr (if
              (string? v)
              (try
-               (read-string v)
+               (json/read-str v)
                (catch Exception _ nil)))]
     (cond
      (nil? v) {}
      (= v "") {}
-     (number? vr) {(keyword k) vr}
+     (and
+       (number? vr)
+       ;; there's a problem that json/read-str will read "07777 888999" as 7777
+       (re-matches #"^[0-9.]+$" v)) {(keyword k) vr}
      true
      {(keyword k) v})))
 
 
-(defn massage-params
+(defn raw-massage-params
+  "Sending empty strings, or numbers as strings, to the database often isn't
+  helpful. Massage these `params` and `form-params` to eliminate these problems.
+  Date and time fields also need massaging."
+  ([request entity]
+   (let
+     [params (:params request)
+      form-params (:form-params request)
+      p (reduce
+         merge
+         {}
+         (map
+          #(massage-value % params)
+          (keys params)))]
+     (if
+       (empty? (keys form-params))
+       p
+       (reduce
+        merge
+        ;; do the keyfields first, from params
+        p
+        ;; then merge in everything from form-params, potentially overriding what
+        ;; we got from params.
+        (map
+         #(massage-value % form-params)
+         (keys form-params))))))
+  ([request]
+   (raw-massage-params request nil)))
+
+
+(def massage-params
   "Sending empty strings, or numbers as strings, to the database often isn't
   helpful. Massage these `params` and `form-params` to eliminate these problems.
   We must take key field values out of just params, but we should take all other
   values out of form-params - because we need the key to load the form in
   the first place, but just accepting values of other params would allow spoofing."
-  [params form-params key-fields]
-  (let
-    [ks (set (map keyword key-fields))]
-    (reduce
-      merge
-      ;; do the keyfields first, from params
-      (reduce
-        merge
-        {}
-        (map
-          #(massage-value % params)
-          (filter
-            #(ks (keyword %))
-            (keys params))))
-      ;; then merge in everything from form-params, potentially overriding what
-      ;; we got from params.
-      (map
-        #(massage-value % form-params)
-        (keys form-params)))))
+  (memo/ttl raw-massage-params {} :ttl/threshold 5000))
 
 
 (defn
@@ -105,6 +101,43 @@
 (def resolve-template (memoize raw-resolve-template))
 
 
+(defmacro compose-exception-reason
+  "Compose and return a sensible reason message for this `exception`."
+  ([exception intro]
+   `(str
+     ~intro
+     (if ~intro ": ")
+     (join
+      "\n\tcaused by: "
+      (reverse
+       (loop [ex# ~exception result# ()]
+         (if-not (nil? ex#)
+           (recur
+            (.getCause ex#)
+            (cons (str
+                   (.getName (.getClass ex#))
+                   ": "
+                   (.getMessage ex#)) result#))
+           result#))))))
+  ([exception]
+   `(compose-exception-reason ~exception nil)))
+
+
+(defmacro compose-reason-and-log
+  "Compose a reason message for this `exception`, log it (with its
+  stacktrace), and return the reason message."
+  ([exception intro]
+   `(let [reason# (compose-exception-reason ~exception ~intro)]
+      (clojure.tools.logging/error
+       reason#
+       "\n"
+       (with-out-str
+         (-> ~exception .printStackTrace)))
+      reason#))
+  ([exception]
+   `(compose-reason-and-log ~exception nil)))
+
+
 (defmacro do-or-log-error
   "Evaluate the supplied `form` in a try/catch block. If the
   keyword param `:message` is supplied, the value will be used
@@ -116,10 +149,68 @@
   `(try
      ~form
      (catch Exception any#
-       (clojure.tools.logging/error
-        (str ~message
-             (with-out-str
-               (-> any# .printStackTrace))))
+       (compose-reason-and-log any# ~message)
        ~error-return)))
 
+
+(defmacro do-or-return-reason
+  "Clojure stacktraces are unreadable. We have to do better; evaluate
+  this `form` in a try-catch block; return a map. If the evaluation
+  succeeds, the map will have a key `:result` whose value is the result;
+  otherwise it will have a key `:error` which will be bound to the most
+  sensible error message we can construct."
+  ([form intro]
+  `(try
+     {:result ~form}
+     (catch Exception any#
+       {:error (compose-exception-reason any# ~intro)})))
+  ([form]
+   `(do-or-return-reason ~form nil)))
+
+
+(defmacro do-or-log-and-return-reason
+  "Clojure stacktraces are unreadable. We have to do better; evaluate
+  this `form` in a try-catch block; return a map. If the evaluation
+  succeeds, the map will have a key `:result` whose value is the result;
+  otherwise it will have a key `:error` which will be bound to the most
+  sensible error message we can construct. Additionally, log the exception"
+  [form]
+  `(try
+     {:result ~form}
+     (catch Exception any#
+       {:error (compose-reason-and-log any#)})))
+
+
+(defmacro do-or-warn
+  "Evaluate this `form`; if any exception is thrown, show it to the user
+  via the `*warn*` mechanism."
+  ([form]
+   `(try
+      ~form
+      (catch Exception any#
+        (*warn* (compose-exception-reason any#))
+        nil)))
+  ([form intro]
+   `(try
+      ~form
+      (catch Exception any#
+        (*warn* (str ~intro ":\n\t" (compose-exception-reason any#)))
+        nil))))
+
+
+(defmacro do-or-warn-and-log
+  "Evaluate this `form`; if any exception is thrown, log the reason and
+  show it to the user via the `*warn*` mechanism."
+  ([form]
+   `(try
+      ~form
+      (catch Exception any#
+        (*warn* (compose-reason-and-log any#))
+        nil)))
+  ([form intro]
+   `(try
+      ~form
+      (catch Exception any#
+        (*warn* (compose-reason-and-log any# ~intro ))
+        nil))))
 
