@@ -1,4 +1,6 @@
-(ns adl-support.print-usage
+(ns ^{:doc "Application Description Language support - print a usage message."
+      :author "Simon Brooke"}
+  adl-support.print-usage
   (:require [clojure.string :refer [join]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

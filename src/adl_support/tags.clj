@@ -1,4 +1,7 @@
-(ns adl-support.tags
+(ns ^{:doc "Application Description Language support - custom Selmer tags used
+      in generated templates."
+      :author "Simon Brooke"}
+  adl-support.tags
     (:require [selmer.parser :as p]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

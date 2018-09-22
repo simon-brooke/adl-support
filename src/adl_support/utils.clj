@@ -1,7 +1,8 @@
-(ns ^{:doc "Application Description Language support library - utility functions."
+(ns ^{:doc "Application Description Language support - utility functions."
       :author "Simon Brooke"}
   adl-support.utils
-  (:require [clojure.math.numeric-tower :refer [expt]]
+  (:require [adl-support.core :refer [*warn*]]
+            [clojure.math.numeric-tower :refer [expt]]
             [clojure.pprint :as p]
             [clojure.string :as s]))
 
@@ -42,6 +43,12 @@
   (and (map? o) (:tag o) (:attrs o)))
 
 
+(defmacro entity?
+  "True if `o` is a Clojure representation of an ADL entity."
+  [o]
+  `(= (:tag ~o) :entity))
+
+
 (defn wrap-lines
   "Wrap lines in this `text` to this `width`; return a list of lines."
   ;; Shamelessly adapted from https://www.rosettacode.org/wiki/Word_wrap#Clojure
@@ -79,35 +86,9 @@
 
 
 (defn sort-by-name
+  "Sort these `elements` by their `:name` attribute."
   [elements]
   (sort #(compare (:name (:attrs %1)) (:name (:attrs %2))) elements))
-
-
-(defn link-table-name
-  "Canonical name of a link table between entity `e1` and entity `e2`. However, there
-  may be different links between the same two tables with different semantics; if
-  `property` is specified, and if more than one property in `e1` links to `e2`, generate
-  a more specific link name."
-  ([e1 e2]
-   (s/join
-     "_"
-     (cons
-       "ln"
-       (sort
-         (list
-           (:name (:attrs e1)) (:name (:attrs e2)))))))
-  ([property e1 e2]
-   (if (count
-         (descendants
-           e1
-           #(and
-              (= (-> % :attrs :type) "link")
-              (=
-                (-> % :attrs :entity)
-                (-> property :attrs :entity)))))
-     (s/join
-       "_" (cons "ln" (map #(:name (:attrs %)) (list property e1 e2))))
-     (link-table-name e1 e2))))
 
 
 (defn children
@@ -281,35 +262,127 @@
       " "
       (map
         #(apply str (cons (Character/toUpperCase (first %)) (rest %)))
-        (s/split s #"[ \t\r\n]+")))
+        (s/split s #"[^a-zA-Z0-9]+")))
     s))
 
 
 (defn pretty-name
-  [entity]
-  (capitalise (singularise (:name (:attrs entity)))))
+  "Return a version of the name of this `element` (entity, field,
+  form, list, page, property) suitable for use in text visible to the user."
+  [element]
+  (capitalise (singularise (:name (:attrs element)))))
 
 
 (defn safe-name
   "Return a safe name for the object `o`, given the specified `convention`.
-  `o` is expected to be either a string or an element."
+  `o` is expected to be either a string or an element. Recognised values for
+  `convention` are: #{:c :c-sharp :java :sql}"
   ([o]
-   (if
+   (cond
      (element? o)
      (safe-name (:name (:attrs o)))
+     true
      (s/replace (str o) #"[^a-zA-Z0-9-]" "")))
   ([o convention]
-   (if
+   (cond
+     (and (entity? o) (= convention :sql))
+     ;; if it's an entity, it's permitted to have a different table name
+     ;; from its entity name. This isn't actually likely, but...
+     (safe-name (or (-> o :attrs :table) (-> o :attrs :name)) :sql)
+     (and (property? o) (= convention :sql))
+     ;; if it's a property, it's entitle to have a different column name
+     ;; from its property name.
+     (safe-name (or (-> o :attrs :column) (-> o :attrs :name)) :sql)
      (element? o)
      (safe-name (:name (:attrs o)) convention)
-     (let [string (str o)]
+     true
+     (let [string (str o)
+           capitalised (capitalise string)]
        (case convention
          (:sql :c) (s/replace string #"[^a-zA-Z0-9_]" "_")
-         :c-sharp (s/replace (capitalise string) #"[^a-zA-Z0-9]" "")
+         :c-sharp (s/replace capitalised #"[^a-zA-Z0-9]" "")
          :java (let
-                 [camel (s/replace (capitalise string) #"[^a-zA-Z0-9]" "")]
+                 [camel (s/replace capitalised #"[^a-zA-Z0-9]" "")]
                  (apply str (cons (Character/toLowerCase (first camel)) (rest camel))))
          (safe-name string))))))
+
+;; (safe-name "address-id" :sql)
+;; (safe-name {:tag :property :attrs {:name "address-id"}} :sql)
+
+
+(defn unique-link?
+  "True if there is exactly one link between entities `e1` and `e2`."
+  [e1 e2]
+  (let [n1 (count (children-with-tag e1 :property
+                                     #(and (= (-> % :attrs :type) "link")
+                                           (= (-> % :attrs :entity)(-> e2 :attrs :name)))))
+        n2 (count (children-with-tag e2 :property
+                                     #(and (= (-> % :attrs :type) "link")
+                                           (= (-> % :attrs :entity)(-> e1 :attrs :name)))))]
+    (= (max n1 n2) 1)))
+
+
+(defn link-related-query-name
+  "link is tricky. If there's exactly than one link between the two
+  entities, we need to generate the same name from both
+  ends of the link"
+  [property nearside farside]
+  (if (unique-link? nearside farside)
+    (let [ordered (sort-by #(-> % :attrs :name) (list nearside farside))]
+      (str "list-"
+           (safe-name (first ordered) :sql)
+           "-by-"
+           (safe-name (nth ordered 1) :sql)))
+      (str "list-"
+           (safe-name property :sql) "-by-"
+           (singularise (safe-name nearside :sql)))))
+
+
+(defn link-table-name
+  "Canonical name of a link table between entity `e1` and entity `e2`. However, there
+  may be different links between the same two tables with different semantics; if
+  `property` is specified, and if more than one property in `e1` links to `e2`, generate
+  a more specific link name."
+  ([e1 e2]
+   (s/join
+     "_"
+     (cons
+       "ln"
+       (sort
+         (list
+           (:name (:attrs e1)) (:name (:attrs e2)))))))
+  ([property e1 e2]
+   (if (unique-link? e1 e2)
+     (link-table-name e1 e2)
+     (s/join
+       "_" (cons "ln" (map #(:name (:attrs %)) (list property e1)))))))
+
+
+(defn list-related-query-name
+  "Return the canonical name of the HugSQL query to return all records on
+  `farside` which match a given record on `nearside`, where `nearide` and
+  `farside` are both entities."
+  [property nearside farside]
+  (if
+     (and
+      (property? property)
+      (entity? nearside)
+      (entity? farside))
+     (case (-> property :attrs :type)
+       "link" (link-related-query-name property nearside farside)
+       "list" (str "list-"
+                   (safe-name farside :sql) "-by-"
+                   (singularise (safe-name nearside :sql)))
+       "entity" (str "list-"
+                   (safe-name nearside :sql) "-by-"
+                   (singularise (safe-name farside :sql)))
+        ;; default
+       (str "ERROR-bad-property-type-"
+            (-> ~property :attrs :type) "-of-"
+            (-> ~property :attrs :name)))
+     (do
+       (*warn* "Argument passed to `list-related-query-name` was a non-entity")
+       nil)))
 
 
 (defn property-for-field
@@ -396,13 +469,23 @@
         elements))))
 
 
+(defn system-generated?
+  "True if the value of the `property` is system generated, and
+  should not be set by the user."
+  [property]
+  (child-with-tag
+          property
+          :generator
+          #(#{"native" "guid"} (-> % :attrs :action))))
+
+
 (defn insertable?
   "Return `true` it the value of this `property` may be set from user-supplied data."
   [property]
   (and
     (= (:tag property) :property)
-    (not (#{"link"} (:type (:attrs property))))
-    (not (= (:distinct (:attrs property)) "system"))))
+    (not (#{"link" "list"} (:type (:attrs property))))
+    (not (system-generated? property))))
 
 
 (defmacro all-properties
@@ -426,6 +509,14 @@
     (user-distinct-properties entity))))
 
 
+(defn column-name
+  "Return, as a string, the name for the column which represents this `property`."
+  [property]
+  (safe-name
+    (or (-> property :attrs :column) (-> property :attrs :name))
+    :sql))
+
+
 (defmacro insertable-properties
   "Return all the properties of this `entity` (including key properties) into
   which user-supplied data can be inserted"
@@ -433,6 +524,17 @@
   `(filter
      insertable?
      (all-properties ~entity)))
+
+
+(defn required-properties
+  "Return the properties of this `entity` which are required and are not
+  system generated."
+  [entity]
+  (filter
+    #(and
+       (= (:required (:attrs %)) "true")
+       (not (system-generated? %)))
+    (descendants-with-tag entity :property)))
 
 
 (defmacro key-properties
@@ -523,14 +625,14 @@
   first child of the `entity` of the specified type will be used."
   [form entity application]
   (cond
-    (and (map? form) (#{:list :form :page} (:tag form)))
-  (s/join
+   (and (map? form) (#{:list :form :page} (:tag form)))
+   (s/join
     "-"
     (flatten
-      (list
-        (name (:tag form)) (:name (:attrs entity)) (s/split (:name (:attrs form)) #"[ \n\r\t]+"))))
-    (keyword? form)
-    (path-part (first (children-with-tag entity form)) entity application)))
+     (list
+      (name (:tag form)) (:name (:attrs entity)) (s/split (:name (:attrs form)) #"[ \n\r\t]+"))))
+   (keyword? form)
+   (path-part (first (children-with-tag entity form)) entity application)))
 
 
 (defn editor-name
