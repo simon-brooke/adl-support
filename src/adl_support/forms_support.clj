@@ -1,4 +1,7 @@
-(ns adl-support.forms-support
+(ns ^{:doc "Application Description Language support - functions useful in
+      generating forms."
+      :author "Simon Brooke"}
+  adl-support.forms-support
   (:require [adl-support.core :refer :all]
             [adl-support.utils :refer [descendants-with-tag safe-name singularise]]
             [clojure.core.memoize :as memo]
@@ -49,6 +52,7 @@
 
 
 (defmacro get-current-value
+  "Use the function `f` and these `params` to fetch an `entity` record from the database."
   [f params entity-name]
   `(let
      [message# (str "Error while fetching " ~entity-name " record " ~params)]
@@ -59,6 +63,9 @@
 
 
 (defmacro get-menu-options
+  "Fetch options for a menu of `entity-name` from the database, using this
+  `get-q` query and this `list-q` query, using the key `fk`, where the current
+  value is this `value`."
   [entity-name get-q list-q fk value]
   `(remove
     nil?
@@ -107,6 +114,8 @@
 
 
 (defn property-defaults
+  "Get a map of property names and default values for all properties of this
+  `entity` which have explicit defaults."
   [entity]
   (reduce
     merge {}

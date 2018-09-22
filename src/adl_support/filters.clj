@@ -1,4 +1,7 @@
-(ns adl-support.filters
+(ns ^{:doc "Application Description Language support - custom Selmer filters
+      used in generated templates."
+      :author "Simon Brooke"}
+  adl-support.filters
     (:require [clojure.string :as s]
               [selmer.filters :as f]
               [selmer.parser :as p]))

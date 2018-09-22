@@ -1,4 +1,4 @@
-(ns ^{:doc "Application Description Language support library - utility functions."
+(ns ^{:doc "Application Description Language support - utility functions."
       :author "Simon Brooke"}
   adl-support.utils
   (:require [adl-support.core :refer [*warn*]]
@@ -86,6 +86,7 @@
 
 
 (defn sort-by-name
+  "Sort these `elements` by their `:name` attribute."
   [elements]
   (sort #(compare (:name (:attrs %1)) (:name (:attrs %2))) elements))
 
@@ -266,8 +267,10 @@
 
 
 (defn pretty-name
-  [entity]
-  (capitalise (singularise (:name (:attrs entity)))))
+  "Return a version of the name of this `element` (entity, field,
+  form, list, page, property) suitable for use in text visible to the user."
+  [element]
+  (capitalise (singularise (:name (:attrs element)))))
 
 
 (defn safe-name

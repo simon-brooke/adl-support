@@ -1,4 +1,7 @@
-(ns adl-support.rest-support
+(ns ^{:doc "Application Description Language support - functions useful in
+      generating JSON route handlers."
+      :author "Simon Brooke"}
+  adl-support.rest-support
   (:require [adl-support.core :refer [do-or-log-error do-or-return-reason]]
             [clojure.core.memoize :as memo]
             [clojure.data.json :as json]

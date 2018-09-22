@@ -1,4 +1,7 @@
-(ns adl-support.core
+(ns ^{:doc "Application Description Language support - utility functions likely
+      to be useful in user-written code."
+      :author "Simon Brooke"}
+  adl-support.core
   (:require [clojure.core.memoize :as memo]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
