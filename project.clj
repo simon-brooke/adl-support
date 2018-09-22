@@ -1,4 +1,4 @@
-(defproject adl-support "0.1.4-SNAPSHOT"
+(defproject adl-support "0.1.5-SNAPSHOT"
   :description "A small library of functions called by generated ADL code."
   :url "https://github.com/simon-brooke/adl-support"
   :license {:name "MIT License"
@@ -11,8 +11,10 @@
                  [selmer "1.11.8"]]
 
   :plugins [[lein-codox "0.10.4"]
-            [lein-release "1.1.3"]]
+            [lein-release "1.0.5"]]
 
+  :deploy-repositories [["releases" :clojars]
+                        ["snapshots" :clojars]]
   :codox {:metadata {:doc "FIXME: write docs"}
           :output-path "doc"}
 
