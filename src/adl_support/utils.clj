@@ -658,3 +658,17 @@
         0
         (expt 10 v)))
     (catch Exception _ 0)))
+
+
+(defn order-preserving-set
+  "The Clojure `set` function does not preserve the order in which elements are
+  passed to it. This function is like `set`, except
+  1. It returns a list, not a hashset, and
+  2. It is order-preserving."
+  [collection]
+  (loop [lhs (list (first collection))
+         rhs (rest collection)]
+    (cond
+      (empty? rhs) (reverse lhs)
+      (some #(= (first rhs) %) lhs) (recur lhs (rest rhs))
+      true (recur (cons (first rhs) lhs) (rest rhs)))))
