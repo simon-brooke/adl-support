@@ -3,11 +3,11 @@
       :author "Simon Brooke"}
   adl-support.forms-support
   (:require [adl-support.core :refer :all]
-            [adl-support.utils :refer [descendants-with-tag safe-name singularise]]
+            [adl-support.utils :refer [capitalise descendants-with-tag safe-name singularise]]
             [clojure.core.memoize :as memo]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
-            [clojure.string :refer [lower-case]]))
+            [clojure.string :refer [join lower-case]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;
@@ -122,3 +122,21 @@
     (map
       #(hash-map (keyword (-> % :attrs :name)) (-> % :attrs :default))
       (descendants-with-tag entity :property #(-> % :attrs :default)))))
+
+
+(defn form-title
+  "Construct an appropriate title for a form having this `form-name`, for an
+  entity having these `user-distinct-property-keys`, given this `record`."
+  [record form-name user-distinct-property-keys]
+  (str
+    form-name
+    ": "
+    (join
+      ", "
+      (remove
+        nil?
+        (map
+          record
+          user-distinct-property-keys)))))
+
+
