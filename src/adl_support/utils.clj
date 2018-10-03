@@ -672,3 +672,14 @@
       (empty? rhs) (reverse lhs)
       (some #(= (first rhs) %) lhs) (recur lhs (rest rhs))
       true (recur (cons (first rhs) lhs) (rest rhs)))))
+
+
+(defmacro entity-by-name
+  "Return the entity with this `entity-name` in this `application`.
+  TODO: Candidate for move to adl-support.utils."
+  [entity-name application]
+  `(child-with-tag
+     ~application
+     :entity
+     #(= (:name (:attrs %)) ~entity-name)))
+
