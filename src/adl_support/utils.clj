@@ -346,24 +346,34 @@
   "Return the canonical name of the HugSQL query to return all records on
   `farside` which match a given record on `nearside`, where `nearide` and
   `farside` are both entities."
-  [property nearside farside]
-  (if
-    (and
-      (property? property)
-      (entity? nearside)
-      (entity? farside))
-    (case (-> property :attrs :type)
-      ("link" "list") (str "list-"
+  ([property nearside farside as-symbol?]
+   (let [n (case (-> property :attrs :type)
+             ;; TODO: I am deeply susicious of this. It's just improbable that
+             ;; the same recipe should work for all three cases.
+             ("link" "list") (str "list-"
+                                  (safe-name farside :sql) "-by-"
+                                  (singularise (safe-name nearside :sql)))
+             "entity" (str "list-"
                            (safe-name farside :sql) "-by-"
                            (singularise (safe-name nearside :sql)))
-      "entity" (str "get-" (singularise (safe-name farside :sql)))
-      ;; default
-      (str "ERROR-bad-property-type-"
-           (-> ~property :attrs :type) "-of-"
-           (-> ~property :attrs :name)))
-    (do
-      (*warn* "Argument passed to `list-related-query-name` was a non-entity")
-      nil)))
+             ;; default
+             (str "ERROR-bad-property-type-"
+                  (-> ~property :attrs :type) "-of-"
+                  (-> ~property :attrs :name)))]
+     (if
+       (and
+         (property? property)
+         (entity? nearside)
+         (entity? farside))
+       (if
+         as-symbol?
+         (symbol (str "db/" n))
+         n)
+       (do
+         (*warn* "Argument passed to `list-related-query-name` was a non-entity")
+         nil))))
+  ([property nearside farside]
+   (list-related-query-name property nearside farside false)))
 
 
 (defn property-for-field
