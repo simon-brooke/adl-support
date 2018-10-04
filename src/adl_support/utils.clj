@@ -322,22 +322,6 @@
     (= (max n1 n2) 1)))
 
 
-(defn link-related-query-name
-  "link is tricky. If there's exactly than one link between the two
-  entities, we need to generate the same name from both
-  ends of the link"
-  [property nearside farside]
-  (if (unique-link? nearside farside)
-    (let [ordered (sort-by #(-> % :attrs :name) (list nearside farside))]
-      (str "list-"
-           (safe-name (first ordered) :sql)
-           "-by-"
-           (safe-name (nth ordered 1) :sql)))
-      (str "list-"
-           (safe-name property :sql) "-by-"
-           (singularise (safe-name nearside :sql)))))
-
-
 (defn link-table-name
   "Canonical name of a link table between entity `e1` and entity `e2`. However, there
   may be different links between the same two tables with different semantics; if
@@ -364,25 +348,22 @@
   `farside` are both entities."
   [property nearside farside]
   (if
-     (and
+    (and
       (property? property)
       (entity? nearside)
       (entity? farside))
-     (case (-> property :attrs :type)
-       "link" (link-related-query-name property nearside farside)
-       "list" (str "list-"
-                   (safe-name farside :sql) "-by-"
-                   (singularise (safe-name nearside :sql)))
-       "entity" (str "list-"
-                   (safe-name nearside :sql) "-by-"
-                   (singularise (safe-name farside :sql)))
-        ;; default
-       (str "ERROR-bad-property-type-"
-            (-> ~property :attrs :type) "-of-"
-            (-> ~property :attrs :name)))
-     (do
-       (*warn* "Argument passed to `list-related-query-name` was a non-entity")
-       nil)))
+    (case (-> property :attrs :type)
+      ("link" "list") (str "list-"
+                           (safe-name farside :sql) "-by-"
+                           (singularise (safe-name nearside :sql)))
+      "entity" (str "get-" (singularise (safe-name farside :sql)))
+      ;; default
+      (str "ERROR-bad-property-type-"
+           (-> ~property :attrs :type) "-of-"
+           (-> ~property :attrs :name)))
+    (do
+      (*warn* "Argument passed to `list-related-query-name` was a non-entity")
+      nil)))
 
 
 (defn property-for-field
