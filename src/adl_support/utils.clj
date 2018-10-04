@@ -342,40 +342,6 @@
        "_" (cons "ln" (map #(:name (:attrs %)) (list property e1)))))))
 
 
-(defn list-related-query-name
-  "Return the canonical name of the HugSQL query to return all records on
-  `farside` which match a given record on `nearside`, where `nearide` and
-  `farside` are both entities."
-  ([property nearside farside as-symbol?]
-   (let [n (case (-> property :attrs :type)
-             ;; TODO: I am deeply susicious of this. It's just improbable that
-             ;; the same recipe should work for all three cases.
-             ("link" "list") (str "list-"
-                                  (safe-name farside :sql) "-by-"
-                                  (singularise (safe-name nearside :sql)))
-             "entity" (str "list-"
-                           (safe-name farside :sql) "-by-"
-                           (singularise (safe-name nearside :sql)))
-             ;; default
-             (str "ERROR-bad-property-type-"
-                  (-> ~property :attrs :type) "-of-"
-                  (-> ~property :attrs :name)))]
-     (if
-       (and
-         (property? property)
-         (entity? nearside)
-         (entity? farside))
-       (if
-         as-symbol?
-         (symbol (str "db/" n))
-         n)
-       (do
-         (*warn* "Argument passed to `list-related-query-name` was a non-entity")
-         nil))))
-  ([property nearside farside]
-   (list-related-query-name property nearside farside false)))
-
-
 (defn property-for-field
   "Return the property within this `entity` which matches this `field`."
   [field entity]
@@ -608,6 +574,45 @@
   (filter
     #(#{"system" "all"} (:distinct (:attrs %)))
     (properties entity)))
+
+
+(defn list-related-query-name
+  "Return the canonical name of the HugSQL query to return all records on
+  `farside` which match a given record on `nearside`, where `nearide` and
+  `farside` are both entities."
+  ([property nearside farside as-symbol?]
+   (let [unique? (=
+                  (count
+                   (filter
+                    #(= (-> % :attrs :entity)(-> property :attrs :entity))
+                    (descendants-with-tag nearside :property)))
+                  1)
+         farname (if unique? (safe-name farside :sql) (safe-name property :sql))
+         nearname (singularise (safe-name nearside :sql))
+         n (case (-> property :attrs :type)
+             ;; TODO: I am deeply susicious of this. It's just improbable that
+             ;; the same recipe should work for all three cases.
+             ("link" "list") (str "list-" farname "-by-" nearname)
+             "entity" (str "list-" farname "-by-" nearname)
+             ;; default
+             (str "ERROR-bad-property-type-"
+                  (-> ~property :attrs :type) "-of-"
+                  (-> ~property :attrs :name)))]
+     (if
+       (and
+         (property? property)
+         (entity? nearside)
+         (entity? farside))
+       (if
+         as-symbol?
+         (symbol (str "db/" n))
+         n)
+       (do
+         (*warn* "Argument passed to `list-related-query-name` was a non-entity")
+         nil))))
+  ([property nearside farside]
+   (list-related-query-name property nearside farside false)))
+
 
 (defn path-part
   "Return the URL path part for this `form` of this `entity` within this `application`.

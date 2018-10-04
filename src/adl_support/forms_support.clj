@@ -92,7 +92,7 @@
   "The name to which data for this `auxlist` will be bound in the
   Selmer params."
  [auxlist]
- `(safe-name (str "auxlist-" (-> ~auxlist :attrs :property)) :clojure))
+ `(safe-name (-> ~auxlist :attrs :property) :clojure))
 
 
 (defmacro all-keys-present?
