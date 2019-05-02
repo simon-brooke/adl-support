@@ -15,9 +15,9 @@
 
   :deploy-repositories [["releases" :clojars]
                         ["snapshots" :clojars]]
-  :codox {:metadata {:doc "FIXME: write docs"}
-          :output-path "doc"}
-
+  :codox {:metadata {:doc "FIXME: write docs"
+                     :doc/format :markdown}
+          :output-path "docs"}
   ;; `lein release` doesn't play nice with `git flow release`. Run `lein release` in the
   ;; `develop` branch, then merge the release tag into the `master` branch.
 
