@@ -322,22 +322,6 @@
     (= (max n1 n2) 1)))
 
 
-(defn link-related-query-name
-  "link is tricky. If there's exactly than one link between the two
-  entities, we need to generate the same name from both
-  ends of the link"
-  [property nearside farside]
-  (if (unique-link? nearside farside)
-    (let [ordered (sort-by #(-> % :attrs :name) (list nearside farside))]
-      (str "list-"
-           (safe-name (first ordered) :sql)
-           "-by-"
-           (safe-name (nth ordered 1) :sql)))
-      (str "list-"
-           (safe-name property :sql) "-by-"
-           (singularise (safe-name nearside :sql)))))
-
-
 (defn link-table-name
   "Canonical name of a link table between entity `e1` and entity `e2`. However, there
   may be different links between the same two tables with different semantics; if
@@ -356,33 +340,6 @@
      (link-table-name e1 e2)
      (s/join
        "_" (cons "ln" (map #(:name (:attrs %)) (list property e1)))))))
-
-
-(defn list-related-query-name
-  "Return the canonical name of the HugSQL query to return all records on
-  `farside` which match a given record on `nearside`, where `nearide` and
-  `farside` are both entities."
-  [property nearside farside]
-  (if
-     (and
-      (property? property)
-      (entity? nearside)
-      (entity? farside))
-     (case (-> property :attrs :type)
-       "link" (link-related-query-name property nearside farside)
-       "list" (str "list-"
-                   (safe-name farside :sql) "-by-"
-                   (singularise (safe-name nearside :sql)))
-       "entity" (str "list-"
-                   (safe-name nearside :sql) "-by-"
-                   (singularise (safe-name farside :sql)))
-        ;; default
-       (str "ERROR-bad-property-type-"
-            (-> ~property :attrs :type) "-of-"
-            (-> ~property :attrs :name)))
-     (do
-       (*warn* "Argument passed to `list-related-query-name` was a non-entity")
-       nil)))
 
 
 (defn property-for-field
@@ -618,6 +575,45 @@
     #(#{"system" "all"} (:distinct (:attrs %)))
     (properties entity)))
 
+
+(defn list-related-query-name
+  "Return the canonical name of the HugSQL query to return all records on
+  `farside` which match a given record on `nearside`, where `nearide` and
+  `farside` are both entities."
+  ([property nearside farside as-symbol?]
+   (let [unique? (=
+                  (count
+                   (filter
+                    #(= (-> % :attrs :entity)(-> property :attrs :entity))
+                    (descendants-with-tag nearside :property)))
+                  1)
+         farname (if unique? (safe-name farside :sql) (safe-name property :sql))
+         nearname (singularise (safe-name nearside :sql))
+         n (case (-> property :attrs :type)
+             ;; TODO: I am deeply susicious of this. It's just improbable that
+             ;; the same recipe should work for all three cases.
+             ("link" "list") (str "list-" farname "-by-" nearname)
+             "entity" (str "list-" farname "-by-" nearname)
+             ;; default
+             (str "ERROR-bad-property-type-"
+                  (-> ~property :attrs :type) "-of-"
+                  (-> ~property :attrs :name)))]
+     (if
+       (and
+         (property? property)
+         (entity? nearside)
+         (entity? farside))
+       (if
+         as-symbol?
+         (symbol (str "db/" n))
+         n)
+       (do
+         (*warn* "Argument passed to `list-related-query-name` was a non-entity")
+         nil))))
+  ([property nearside farside]
+   (list-related-query-name property nearside farside false)))
+
+
 (defn path-part
   "Return the URL path part for this `form` of this `entity` within this `application`.
   Note that `form` may be a Clojure XML representation of a `form`, `list` or `page`
@@ -658,3 +654,28 @@
         0
         (expt 10 v)))
     (catch Exception _ 0)))
+
+
+(defn order-preserving-set
+  "The Clojure `set` function does not preserve the order in which elements are
+  passed to it. This function is like `set`, except
+  1. It returns a list, not a hashset, and
+  2. It is order-preserving."
+  [collection]
+  (loop [lhs (list (first collection))
+         rhs (rest collection)]
+    (cond
+      (empty? rhs) (reverse lhs)
+      (some #(= (first rhs) %) lhs) (recur lhs (rest rhs))
+      true (recur (cons (first rhs) lhs) (rest rhs)))))
+
+
+(defmacro entity-by-name
+  "Return the entity with this `entity-name` in this `application`.
+  TODO: Candidate for move to adl-support.utils."
+  [entity-name application]
+  `(child-with-tag
+     ~application
+     :entity
+     #(= (:name (:attrs %)) ~entity-name)))
+

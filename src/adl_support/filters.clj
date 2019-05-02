@@ -4,7 +4,8 @@
   adl-support.filters
     (:require [clojure.string :as s]
               [selmer.filters :as f]
-              [selmer.parser :as p]))
+              [selmer.parser :as p]
+              [selmer.tags :as t]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;
@@ -64,3 +65,24 @@
 (f/add-filter! :email email)
 
 ;; (p/render "{{p|telephone}}" {:p "07768 130255"})
+
+(defn contains
+  [collection value]
+  (first
+    (filter
+      #(= % value)
+      collection)))
+
+;; (contains '(:a :b :c) :a)
+
+(f/add-filter! :contains contains)
+
+;; (p/render "{{l|contains:\"foo\"}}" {:l ["froboz" "bar"]})
+
+;; (p/render "{% if l|contains:\"foo\" %}I see ya!{% else %}I don't{% endif %}"  {:l ["foo" "bar"]})
+;; (p/render "{% if l|contains:\"foo\" %}I see ya!{% else %}I don't{% endif %}"  {:l ["froboz" "bar"]})
+
+;; (p/render
+;;    "<option value='{{option.id}}' {% if record.roles|contains:option.id %}selected='selected'{% endif %}>{{option.name}}</option>"
+;;    {:option {:id 2 :name "Fred"} :record {:roles [2 6]}})
+

@@ -46,10 +46,10 @@
   ;; TODO: candidate for moving to adl-support.core
   [form request]
   `(if-valid-user
-    ~form
-    ~request
-    {:status 403
-     :body (json/write-str "You must be logged in to do that")}))
+     ~form
+     ~request
+     {:status 403
+      :body (json/write-str "You must be logged in to do that")}))
 
 
 (defmacro with-params-or-error
@@ -64,9 +64,6 @@
       :body (json/write-str (str "The following params are required: " ~required))}))
 
 
-;; (with-params-or-error (/ 1 0) {:a 1 :b 2} #{:a :b :c})
-;; (with-params-or-error "hello" {:a 1 :b 2} #{:a :b })
-
 (defmacro do-or-server-fail
   "Evaluate this `form`; if it succeeds, return an HTTP response with this
   status code and the JSON-formatted result as body; if it fails, return an
@@ -78,6 +75,5 @@
        {:status ~status
         :body (:result r#)}
        {:status 500
-             :body r#})))
-
+        :body r#})))
 

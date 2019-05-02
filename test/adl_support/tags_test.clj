@@ -6,7 +6,7 @@
 (add-tags)
 
 (deftest if-member-of-tests
-  (testing "testing the if-member-of tag"
+  (testing "the `ifmemberof` tag"
     (let [expected "boo"
           actual (if-member-of-permitted nil nil "caramba" "boo")]
       (is (= expected actual) "Nil args, nil "))
@@ -48,3 +48,75 @@
 
 
 
+(deftest if-contains-tests
+  (testing "the `ifcontains` tag"
+    (let [expected "Hello!"
+          actual (parser/render "{% ifcontains record.roles option.id %}Hello!{% else %}Goodbye!{% endifcontains %}"
+          {:option {:id 2 :name "Fred"} :record {:roles [2 6]}})]
+      (is (= expected actual)
+          "Both args are paths which exist in the context;
+          the value of the first contains the value of the second;
+          values are numbers"))
+    (let [expected "Goodbye!"
+          actual (parser/render "{% ifcontains record.roles option.id %}Hello!{% else %}Goodbye!{% endifcontains %}"
+          {:option {:id 3 :name "Ginny"} :record {:roles [2 6]}})]
+      (is (= expected actual)
+          "Both args are paths which exist in the context;
+          the value of the first does not contain the value of the second;
+          values are numbers"))
+     (let [expected "Hello!"
+          actual (parser/render "{% ifcontains record.roles option.id %}Hello!{% else %}Goodbye!{% endifcontains %}"
+          {:option {:id :two :name "Fred"} :record {:roles [:two :six]}})]
+      (is (= expected actual)
+          "Both args are paths which exist in the context;
+          the value of the first contains the value of the second;
+          values are keywords"))
+    (let [expected "Goodbye!"
+          actual (parser/render "{% ifcontains record.roles option.id %}Hello!{% else %}Goodbye!{% endifcontains %}"
+          {:option {:id :three :name "Ginny"} :record {:roles [:two :six]}})]
+      (is (= expected actual)
+          "Both args are paths which exist in the context;
+          the value of the first does not contain the value of the second;
+          values are keywords"))
+     (let [expected "Hello!"
+          actual (parser/render "{% ifcontains record.roles option.id %}Hello!{% else %}Goodbye!{% endifcontains %}"
+          {:option {:id "two" :name "Fred"} :record {:roles ["two" "six"]}})]
+      (is (= expected actual)
+          "Both args are paths which exist in the context;
+          the value of the first contains the value of the second;
+          values are strings"))
+    (let [expected "Goodbye!"
+          actual (parser/render "{% ifcontains record.roles option.id %}Hello!{% else %}Goodbye!{% endifcontains %}"
+          {:option {:id "three" :name "Ginny"} :record {:roles ["two" "six"]}})]
+      (is (= expected actual)
+          "Both args are paths which exist in the context;
+          the value of the first does not contain the value of the second;
+          values are strings"))
+    (let [expected "Hello!"
+          actual (parser/render "{% ifcontains record.roles 2 %}Hello!{% else %}Goodbye!{% endifcontains %}"
+          {:option {:id 4 :name "Henry"} :record {:roles [2 6]}})]
+      (is (= expected actual)
+          "First arg is a path which exists in the context, second is a literal number;
+          the value of the first contains the value of the second;
+          values are numbers"))
+    (let [expected "Goodbye!"
+          actual (parser/render "{% ifcontains record.roles 3 %}Hello!{% else %}Goodbye!{% endifcontains %}"
+          {:option {:id 3 :name "Ginny"} :record {:roles [2 6]}})]
+      (is (= expected actual)
+          "First arg is a path which exists in the context, second is a literal number;
+          the value of the first does not contain the value of the second;
+          values are numbers"))
+    (let [expected "Hello!"
+          actual (parser/render "{% ifcontains record.roles :two %}Hello!{% else %}Goodbye!{% endifcontains %}"
+          {:option {:id 4 :name "Henry"} :record {:roles [:two :six]}})]
+      (is (= expected actual)
+          "First arg is a path which exists in the context, second is a literal keyword;
+          the value of the first contains the value of the second;
+          values are numbers"))
+    (let [expected "Goodbye!"
+          actual (parser/render "{% ifcontains record.roles :three %}Hello!{% else %}Goodbye!{% endifcontains %}"
+          {:option {:id 3 :name "Ginny"} :record {:roles [:two :six]}})]
+      (is (= expected actual)
+          "First arg is a path which exists in the context, second is a literal keyword;
+          the value of the first does not contain the value of the second;
+          values are numbers"))))

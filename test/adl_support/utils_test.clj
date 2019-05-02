@@ -598,3 +598,9 @@
       (is (= (key-names e2) #{"id" "shard"}))
       (is (= (key-names e2 true) #{:id :shard})))))
 
+
+(deftest order-preserving-set-tests
+  (testing "order-preserving-set"
+    (is (= '(:a) (order-preserving-set '(:a :a :a :a))))
+    (is (= '(:a) (order-preserving-set [:a :a :a :a])))
+    (is (= '(:a :b :c :d :e) (order-preserving-set '(:a :a :b :c :a :b :d :c :e))))))
