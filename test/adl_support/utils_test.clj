@@ -308,7 +308,7 @@
 
 (deftest list-related-query-name-tests
   (testing "list-related-query-name"
-    (let [e1 {:tag :entity,
+    (let [genders-entity {:tag :entity,
               :attrs {:volatility "6", :magnitude "1", :name "genders", :table "genders"},
               :content [{:tag :documentation,
                          :content ["All genders which may be assigned to\n    electors."]}
@@ -321,7 +321,7 @@
                                                :content nil}]}]}
                         {:tag :list, :attrs {:name "Genders", :properties "all"}}
                         {:tag :form, :attrs {:name "Gender", :properties "all"}}]}
-          e2 {:tag :entity,
+          electors-entity {:tag :entity,
               :attrs {:volatility "6", :magnitude "1", :name "electors", :table "electors"},
               :content [{:tag :documentation,
                          :attrs nil,
@@ -366,9 +366,9 @@
                          [{:tag :prompt,
                            :attrs {:locale "en_GB.UTF-8", :prompt "Gender"},
                            :content nil}]}]}
-          property (child e2 #(= (-> % :attrs :name) "gender"))
+          property (child electors-entity #(= (-> % :attrs :name) "gender"))
           expected "list-electors-by-gender"
-          actual (list-related-query-name property e2 e1)]
+          actual (list-related-query-name property electors-entity genders-entity)]
       (is (= expected actual) "just checking..."))
     (let [e1 {:tag :entity
               :attrs {:name "dwellings"}
@@ -394,7 +394,7 @@
             expected "list-dwellings-by-address"
             actual (list-related-query-name property e2 e1)]
         (is (= expected actual) "List property")))
-    (let [e1 {:tag :entity
+    (let [team-entity {:tag :entity
               :attrs {:name "teams"}
               :content [{:tag :key
                          :content [{:tag :property
@@ -403,7 +403,7 @@
                          :attrs {:name "members" :type "link" :entity "canvassers"}}
                         {:tag :property
                          :attrs {:name "organisers" :type "link" :entity "canvassers"}}]}
-          e2 {:tag :entity
+          canvasser-entity {:tag :entity
               :attrs {:name "canvassers"}
               :content [{:tag :key
                          :content [{:tag :property
@@ -413,17 +413,17 @@
       (let [property {:tag :property
                       :attrs {:name "members" :type "link" :entity "canvassers"}}
             expected "list-members-by-team"
-            actual (list-related-query-name property e1 e2)]
+            actual (list-related-query-name property team-entity canvasser-entity)]
         (is (= actual expected) "Link property - members"))
       (let [property {:tag :property
                       :attrs {:name "organisers" :type "link" :entity "canvassers"}}
             expected "list-organisers-by-team"
-            actual (list-related-query-name property e1 e2)]
+            actual (list-related-query-name property team-entity canvasser-entity)]
         (is (= actual expected) "Link property - organisers"))
       (let [property {:tag :property
                          :attrs {:name "memberships" :type "link" :entity "teams"}}
             expected "list-memberships-by-canvasser"
-            actual (list-related-query-name property e2 e1)]
+            actual (list-related-query-name property canvasser-entity team-entity)]
         (is (= actual expected) "Link property - membersips")))))
 
 

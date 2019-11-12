@@ -579,21 +579,24 @@
 (defn list-related-query-name
   "Return the canonical name of the HugSQL query to return all records on
   `farside` which match a given record on `nearside`, where `nearide` and
-  `farside` are both entities."
+  `farside` are both entities; and `property` is the nearside property on
+  which to join."
   ([property nearside farside as-symbol?]
    (let [unique? (=
-                  (count
-                   (filter
-                    #(= (-> % :attrs :entity)(-> property :attrs :entity))
-                    (descendants-with-tag nearside :property)))
-                  1)
+                   (count
+                     (filter
+                       #(= (-> % :attrs :entity)(-> property :attrs :entity))
+                       (descendants-with-tag nearside :property)))
+                   1)
          farname (if unique? (safe-name farside :sql) (safe-name property :sql))
          nearname (singularise (safe-name nearside :sql))
          n (case (-> property :attrs :type)
-             ;; TODO: I am deeply susicious of this. It's just improbable that
-             ;; the same recipe should work for all three cases.
-             ("link" "list") (str "list-" farname "-by-" nearname)
-             "entity" (str "list-" farname "-by-" nearname)
+             "list" (str "list-" farname "-by-" nearname)
+             "link" (s/join "-"
+                            (list
+                              "list"
+                              (safe-name property :sql) "by" nearname))
+             "entity" (str "list-" (safe-name nearside :sql) "-by-" (safe-name property :sql))
              ;; default
              (str "ERROR-bad-property-type-"
                   (-> ~property :attrs :type) "-of-"
