@@ -261,7 +261,7 @@
     (s/join
       " "
       (map
-        #(apply str (cons (Character/toUpperCase (first %)) (rest %)))
+        s/capitalize
         (s/split s #"[^a-zA-Z0-9]+")))
     s))
 
