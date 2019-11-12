@@ -5,10 +5,10 @@
             :url "https://opensource.org/licenses/MIT"}
 
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/core.memoize "0.7.1"]
+                 [org.clojure/core.memoize "0.8.2"]
                  [org.clojure/math.numeric-tower "0.0.4"]
-                 [org.clojure/tools.logging "0.4.1"]
-                 [selmer "1.11.8"]]
+                 [org.clojure/tools.logging "0.5.0"]
+                 [selmer "1.12.17"]]
 
   :plugins [[lein-codox "0.10.4"]
             [lein-release "1.0.5"]]
