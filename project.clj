@@ -1,4 +1,4 @@
-(defproject adl-support "0.1.6"
+(defproject adl-support "0.1.7"
   :description "A small library of functions called by generated ADL code."
   :url "https://github.com/simon-brooke/adl-support"
   :license {:name "MIT License"
