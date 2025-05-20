@@ -261,7 +261,7 @@
     (s/join
       " "
       (map
-        #(apply str (cons (Character/toUpperCase (first %)) (rest %)))
+        s/capitalize
         (s/split s #"[^a-zA-Z0-9]+")))
     s))
 
@@ -276,7 +276,7 @@
 (defn safe-name
   "Return a safe name for the object `o`, given the specified `convention`.
   `o` is expected to be either a string or an element. Recognised values for
-  `convention` are: #{:c :c-sharp :java :sql}"
+  `convention` are: #{:c :c-sharp :clojure :java :sql}"
   ([o]
    (cond
      (element? o)
@@ -300,6 +300,7 @@
            capitalised (capitalise string)]
        (case convention
          (:sql :c) (s/replace string #"[^a-zA-Z0-9_]" "_")
+         :clojure (s/replace string #"[^a-zA-Z0-9-]" "-")
          :c-sharp (s/replace capitalised #"[^a-zA-Z0-9]" "")
          :java (let
                  [camel (s/replace capitalised #"[^a-zA-Z0-9]" "")]
@@ -579,21 +580,24 @@
 (defn list-related-query-name
   "Return the canonical name of the HugSQL query to return all records on
   `farside` which match a given record on `nearside`, where `nearide` and
-  `farside` are both entities."
+  `farside` are both entities; and `property` is the nearside property on
+  which to join."
   ([property nearside farside as-symbol?]
    (let [unique? (=
-                  (count
-                   (filter
-                    #(= (-> % :attrs :entity)(-> property :attrs :entity))
-                    (descendants-with-tag nearside :property)))
-                  1)
+                   (count
+                     (filter
+                       #(= (-> % :attrs :entity)(-> property :attrs :entity))
+                       (descendants-with-tag nearside :property)))
+                   1)
          farname (if unique? (safe-name farside :sql) (safe-name property :sql))
          nearname (singularise (safe-name nearside :sql))
          n (case (-> property :attrs :type)
-             ;; TODO: I am deeply susicious of this. It's just improbable that
-             ;; the same recipe should work for all three cases.
-             ("link" "list") (str "list-" farname "-by-" nearname)
-             "entity" (str "list-" farname "-by-" nearname)
+             "list" (str "list-" farname "-by-" nearname)
+             "link" (s/join "-"
+                            (list
+                              "list"
+                              (safe-name property :sql) "by" nearname))
+             "entity" (str "list-" (safe-name nearside :sql) "-by-" (safe-name property :sql))
              ;; default
              (str "ERROR-bad-property-type-"
                   (-> ~property :attrs :type) "-of-"
@@ -608,7 +612,12 @@
          (symbol (str "db/" n))
          n)
        (do
-         (*warn* "Argument passed to `list-related-query-name` was a non-entity")
+         (*warn*
+           (str "Argument "
+                (cond
+                  (not (entity? nearside)) (or (-> nearside :attrs :name) nearside "nearside")
+                  (not (entity? farside)) (or (-> farside :attrs :name) farside "farside"))
+                " passed to `list-related-query-name` was a non-entity"))
          nil))))
   ([property nearside farside]
    (list-related-query-name property nearside farside false)))

@@ -37,7 +37,7 @@
   `k` in map `m`, as read by read."
   [k m]
   (let [v (m k)
-        vr (if
+        vr (when
              (string? v)
              (try
                (json/read-str v)
@@ -49,7 +49,7 @@
        (number? vr)
        ;; there's a problem that json/read-str will read "07777 888999" as 7777
        (re-matches #"^[0-9.]+$" v)) {(keyword k) vr}
-     true
+     :else
      {(keyword k) v})))
 
 
