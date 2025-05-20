@@ -276,7 +276,7 @@
 (defn safe-name
   "Return a safe name for the object `o`, given the specified `convention`.
   `o` is expected to be either a string or an element. Recognised values for
-  `convention` are: #{:c :c-sharp :java :sql}"
+  `convention` are: #{:c :c-sharp :clojure :java :sql}"
   ([o]
    (cond
      (element? o)
@@ -300,6 +300,7 @@
            capitalised (capitalise string)]
        (case convention
          (:sql :c) (s/replace string #"[^a-zA-Z0-9_]" "_")
+         :clojure (s/replace string #"[^a-zA-Z0-9-]" "-")
          :c-sharp (s/replace capitalised #"[^a-zA-Z0-9]" "")
          :java (let
                  [camel (s/replace capitalised #"[^a-zA-Z0-9]" "")]
@@ -611,7 +612,12 @@
          (symbol (str "db/" n))
          n)
        (do
-         (*warn* "Argument passed to `list-related-query-name` was a non-entity")
+         (*warn*
+           (str "Argument "
+                (cond
+                  (not (entity? nearside)) (or (-> nearside :attrs :name) nearside "nearside")
+                  (not (entity? farside)) (or (-> farside :attrs :name) farside "farside"))
+                " passed to `list-related-query-name` was a non-entity"))
          nil))))
   ([property nearside farside]
    (list-related-query-name property nearside farside false)))
